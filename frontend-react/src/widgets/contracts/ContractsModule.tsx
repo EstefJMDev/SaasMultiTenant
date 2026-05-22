@@ -920,12 +920,13 @@ export const ContractsModule: React.FC<ContractsModuleProps> = ({
         queryKey: contractsBaseKey,
       });
       const fullyApproved = contract.comparative_status === "APPROVED";
-      if (fullyApproved) {
-        setNewFlowContractId(null);
-        setViewMode("ver");
-        setCurrentView("contrato-form");
-        void contractsQuery.refetch();
-      }
+      void queryClient.invalidateQueries({
+        queryKey: contractKeys.comparativeApprovals(
+          contract.tenant_id ?? effectiveTenantId,
+          contract.id,
+        ),
+      });
+      void contractsQuery.refetch();
       toast({
         status: "success",
         title: "Comparativo aprobado",
@@ -11359,29 +11360,32 @@ const ApprovalPanel: React.FC<ApprovalPanelProps> = ({
       .filter(Boolean);
   }, [approvalErrorDetail]);
   const resolvedTenantId = contract?.tenant_id ?? tenantId;
+  const enableContractApprovalQueries = Boolean(
+    contract?.id && isContractsScope,
+  );
   const contractDocsQuery = useQuery({
     queryKey: contractKeys.documents(tenantId, contract?.id ?? 0),
     queryFn: () =>
       fetchContractDocuments(contract!.id, contract?.tenant_id ?? tenantId),
-    enabled: Boolean(contract?.id),
+    enabled: enableContractApprovalQueries,
   });
   const workflowTimelineQuery = useQuery({
     queryKey: contractKeys.workflowTimeline(resolvedTenantId),
     queryFn: () => fetchContractWorkflow(resolvedTenantId),
-    enabled: Boolean(contract?.id && resolvedTenantId),
+    enabled: Boolean(enableContractApprovalQueries && resolvedTenantId),
   });
   const workflowApprovalsQuery = useQuery({
     queryKey: contractKeys.workflowApprovals(resolvedTenantId, contract?.id ?? 0),
     queryFn: () =>
       fetchContractWorkflowApprovals(contract!.id, contract?.tenant_id ?? tenantId),
-    enabled: Boolean(contract?.id),
+    enabled: enableContractApprovalQueries,
   });
   const contractReviewApprovalsQuery = useQuery({
     queryKey: ["review-approvals", contract?.id ?? 0, resolvedTenantId],
     queryFn: () =>
       fetchReviewApprovals(contract!.id, contract?.tenant_id ?? tenantId),
     enabled: Boolean(
-      contract?.id &&
+      enableContractApprovalQueries &&
         contract?.status &&
         [
           "PENDING_DATA_VALIDATION",
@@ -11403,7 +11407,7 @@ const ApprovalPanel: React.FC<ApprovalPanelProps> = ({
     queryKey: contractKeys.detail(resolvedTenantId, contract?.id ?? 0),
     queryFn: () =>
       fetchContractById(contract!.id, contract?.tenant_id ?? tenantId),
-    enabled: Boolean(contract?.id),
+    enabled: enableContractApprovalQueries,
     refetchInterval: (query) => {
       const data = query.state.data as any;
       const status = data?.status ?? contract?.status;
@@ -11984,14 +11988,13 @@ const ApprovalPanel: React.FC<ApprovalPanelProps> = ({
     const contractGenerated =
       comparativeFullyApproved &&
       !awaitingSupplier &&
-      c.status !== "DRAFT" &&
-      c.status !== "PENDING_JEFE_OBRA" &&
+      c.status !== "PENDING_TEMPLATE" &&
       c.status !== "PENDING_SUPPLIER";
 
     const awaitingAdmin =
       comparativeFullyApproved &&
       !awaitingSupplier &&
-      (c.status === "DRAFT" || c.status === "PENDING_TEMPLATE");
+      c.status === "PENDING_TEMPLATE";
     events.push({
       status: contractGenerated
         ? "completed"
@@ -12003,7 +12006,7 @@ const ApprovalPanel: React.FC<ApprovalPanelProps> = ({
         : awaitingSupplier
           ? "CONTRATO PENDIENTE DE GENERACION"
           : awaitingAdmin
-            ? "PENDIENTE DE ACTIVACION POR ADMINISTRACION"
+            ? "GENERANDO CONTRATO"
             : comparativeFullyApproved
               ? "GENERANDO CONTRATO"
               : "CONTRATO PENDIENTE DE GENERACION",

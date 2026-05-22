@@ -22,7 +22,6 @@ import { buildBreadcrumb } from "@shared/routing/breadcrumb";
 import { EmptyState } from "@shared/ui/EmptyState";
 import { parseTenantId, readTenantId } from "@shared/api/tenant";
 import { isTenantScopedRoute } from "@shared/routing/tenantScope";
-import { FloatingAgentButton } from "@components/FloatingAgentButton";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -434,7 +433,6 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
           </Box>
         </Flex>
 
-        <FloatingAgentButton />
       </Flex>
       </PageInfoContext.Provider>
     </AppShellContext.Provider>

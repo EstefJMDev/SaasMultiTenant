@@ -25,6 +25,7 @@ from app.platform.contracts_core.models import (
 )
 from app.platform.contracts_core.permissions import (
     _is_tenant_admin,
+    can_approve_comparative,
     can_approve_contract,
     can_edit_contract,
     can_reject_contract,
@@ -62,6 +63,29 @@ def _sorted_workflow_steps(steps: list[ContractWorkflowStep]) -> list[ContractWo
 def _normalize_department_name(name: str) -> str:
     normalized = unicodedata.normalize("NFKD", name or "")
     return "".join(ch for ch in normalized if not unicodedata.combining(ch)).strip().lower()
+
+
+def _comparative_approver_department_name(
+    session: Session,
+    *,
+    user: User,
+    tenant_id: int,
+) -> str:
+    row = session.exec(
+        select(Department.name)
+        .join(Position, Position.department_id == Department.id)
+        .join(EmployeeProfile, EmployeeProfile.position_id == Position.id)
+        .where(
+            EmployeeProfile.user_id == user.id,
+            EmployeeProfile.tenant_id == tenant_id,
+            EmployeeProfile.is_active.is_(True),
+        )
+    ).first()
+    if isinstance(row, str):
+        return _normalize_department_name(row)
+    if row and row[0]:
+        return _normalize_department_name(str(row[0]))
+    return ""
 
 
 def _default_department_sort_key(department: Department) -> tuple[int, str, int]:
@@ -406,12 +430,28 @@ def get_contract_comparative_approvals(
     tenant_id: int,
     user: User,
 ) -> list[dict[str, Any]]:
-    contract = contract_crud.get_contract(
-        session,
-        contract_id=contract_id,
-        tenant_id=tenant_id,
-        user=user,
-    )
+    ensure_tenant_access(user, tenant_id)
+    contract = contract_crud._get_contract_or_404(session, contract_id, tenant_id)
+    can_view_all = contract_crud.can_view_all_comparatives(
+        session, user
+    ) or contract_crud.can_view_all_contracts(session, user)
+    if not can_view_all and contract.created_by_id != user.id:
+        subordinado_user_ids = contract_crud._get_jo_subordinado_user_ids(
+            session, current_user=user, tenant_id=tenant_id
+        )
+        if contract.created_by_id in subordinado_user_ids:
+            pass
+        else:
+            approver_dept = _comparative_approver_department_name(
+                session, user=user, tenant_id=tenant_id
+            )
+            is_gerencia_approver = (
+                can_approve_comparative(session, user) and approver_dept == "gerencia"
+            )
+            if not is_gerencia_approver:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN, detail="Sin permisos"
+                )
     rows = list(
         session.exec(
             select(ContractApproval).where(
@@ -1173,8 +1213,5 @@ def reject_contract(
     )
 
     return contract
-
-
-
 
 

@@ -30,6 +30,8 @@ from app.platform.contracts_core.permissions import (
     can_read_comparative,
     can_reject_comparative,
     can_reject_contract,
+    can_view_all_comparatives,
+    can_view_all_contracts,
     can_view_contract,
     can_write_comparative,
     ensure_tenant_access,
@@ -909,6 +911,40 @@ def _resolve_comparative_branch(
     return ContractDepartment.GERENCIA
 
 
+def _ensure_user_can_manage_comparative(
+    session: Session,
+    *,
+    contract: Contract,
+    tenant_id: int,
+    user: User,
+) -> None:
+    if can_view_all_comparatives(session, user) or can_view_all_contracts(session, user):
+        return
+
+    _ensure_user_can_manage_comparative(
+        session,
+        contract=contract,
+        tenant_id=tenant_id,
+        user=user,
+    )
+    branch = _resolve_comparative_branch(session, user)
+    if branch == ContractDepartment.GERENCIA:
+        return
+
+    subordinado_user_ids = contract_crud._get_jo_subordinado_user_ids(
+        session,
+        current_user=user,
+        tenant_id=tenant_id,
+    )
+    if contract.created_by_id in subordinado_user_ids:
+        return
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Sin permisos sobre este comparativo.",
+    )
+
+
 def _current_comparative_cycle(session: Session, contract: Contract) -> int:
     """Devuelve el numero de ciclo activo de aprobacion de comparativo.
 
@@ -1009,6 +1045,12 @@ def approve_comparative(
             detail="Solo Gerencia y Director Técnico pueden aprobar el comparativo.",
         )
 
+    _ensure_user_can_manage_comparative(
+        session,
+        contract=contract,
+        tenant_id=tenant_id,
+        user=user,
+    )
     branch = _resolve_comparative_branch(session, user)
     try:
         contract_crud._upsert_approval(
@@ -1238,6 +1280,12 @@ def reject_comparative(
             detail="No tienes permisos para rechazar el comparativo.",
         )
 
+    _ensure_user_can_manage_comparative(
+        session,
+        contract=contract,
+        tenant_id=tenant_id,
+        user=user,
+    )
     branch = _resolve_comparative_branch(session, user)
     # Registramos el rechazo de la rama para auditoria antes de limpiarlo
     # en el reinicio del ciclo.
