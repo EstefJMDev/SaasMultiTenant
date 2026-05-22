@@ -716,7 +716,7 @@ def _notify_admin_assignment(
             "entity": "contract",
             "contract_id": contract.id,
             "view": "contrato-form",
-            "mode": "ver",
+            "mode": "editar",
             "event": "contract.admin_assignment",
         },
     )
@@ -1019,6 +1019,57 @@ def _derive_project_id_from_comparative(comparative_data: object) -> Optional[in
         return None
 
 
+def _derive_project_number_from_comparative(comparative_data: object) -> Optional[str]:
+    if not isinstance(comparative_data, dict):
+        return None
+    header = comparative_data.get("header") if isinstance(comparative_data.get("header"), dict) else {}
+    raw = (
+        comparative_data.get("obra_numero")
+        or comparative_data.get("obra_num")
+        or (header.get("obra_numero") if isinstance(header, dict) else None)
+        or (header.get("obra_num") if isinstance(header, dict) else None)
+    )
+    if raw is None:
+        return None
+    normalized = "".join(ch for ch in str(raw).strip() if ch.isdigit())[:4]
+    return normalized or None
+
+
+def _sync_worksite_snapshot_into_contract(
+    session: Session,
+    *,
+    tenant_id: int,
+    contract: Contract,
+) -> None:
+    from app.domains.work.catalog_api import get_worksite_by_code_for_tenant
+
+    project_number = (
+        "".join(ch for ch in str(contract.project_number or "").strip() if ch.isdigit())[:4]
+        or None
+    )
+    if project_number:
+        contract.project_number = project_number
+    if not project_number:
+        return
+    worksite = get_worksite_by_code_for_tenant(
+        session,
+        tenant_id=tenant_id,
+        code=project_number,
+    )
+    if not worksite:
+        return
+    contract.promoter = worksite.client_name
+    if isinstance(contract.contract_data, dict):
+        project = dict(contract.contract_data.get("project") or {})
+        project["promotora"] = worksite.client_name
+        project["promotor"] = worksite.client_name
+        project["nombre_obra"] = project.get("nombre_obra") or worksite.name
+        contract.contract_data = {
+            **contract.contract_data,
+            "project": project,
+        }
+
+
 def _resolve_valid_project_id(
     session: Session, *, tenant_id: int, candidate: Optional[int]
 ) -> Optional[int]:
@@ -1087,6 +1138,7 @@ def create_contract(
         candidate=_derive_project_id_from_comparative(comparative_data),
     )
     manual_title = _clean_optional_title(payload.get("title"))
+    project_number = _derive_project_number_from_comparative(comparative_data)
 
     contract = Contract(
         tenant_id=tenant_id,
@@ -1095,6 +1147,7 @@ def create_contract(
         title=manual_title,
         description=None,
         project_id=derived_project_id,
+        project_number=project_number,
         comparative_data=comparative_data,
         contract_data=contract_data,
         supplier_name=supplier_name,
@@ -1104,6 +1157,11 @@ def create_contract(
         or comparative_snapshot.get("supplier_contact_name"),
         total_amount=payload.get("total_amount") or comparative_snapshot.get("total_amount"),
         status=ContractStatus.DRAFT,
+    )
+    _sync_worksite_snapshot_into_contract(
+        session,
+        tenant_id=tenant_id,
+        contract=contract,
     )
     session.add(contract)
     session.commit()
@@ -1296,6 +1354,16 @@ def update_contract(
         )
         if derived_project_id is not None:
             contract.project_id = derived_project_id
+        derived_project_number = _derive_project_number_from_comparative(
+            contract.comparative_data
+        )
+        if derived_project_number:
+            contract.project_number = derived_project_number
+        _sync_worksite_snapshot_into_contract(
+            session,
+            tenant_id=tenant_id,
+            contract=contract,
+        )
         contract.description = None
 
         if contract.total_amount is not None:

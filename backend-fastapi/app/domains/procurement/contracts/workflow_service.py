@@ -329,11 +329,10 @@ def auto_progress_after_comparative_approval(
             )
             current_status = ContractStatus.PENDING_DATA_VALIDATION.value
 
-    # Paso 3: PENDING_DATA_VALIDATION → PENDING_REVIEW (auto-generación del PDF).
-    # Si los datos requeridos están completos, generamos el documento ya — así
-    # cualquier usuario que pueda ver el contrato encuentra el PDF disponible
-    # sin esperar a que un admin pulse "Generar". Si faltan datos, dejamos el
-    # contrato en PENDING_DATA_VALIDATION para que un admin complete y genere.
+    # Paso 3: generar automáticamente el PDF del contrato cuando la plantilla
+    # y los datos mínimos ya estén listos. `generate_contract_from_template`
+    # deja el contrato en PENDING_DATA_VALIDATION, es decir, "generado y en
+    # borrador" para Administración.
     if (
         current_status == ContractStatus.PENDING_DATA_VALIDATION.value
         and contract.template_id is not None
@@ -360,8 +359,8 @@ def auto_progress_after_comparative_approval(
                     contract=contract,
                     created_by_id=None,
                 )
-                # generate_contract_from_template hace commit y refresh internamente
-                # y avanza el estado a PENDING_REVIEW.
+                # generate_contract_from_template hace commit y refresh
+                # internamente y deja el contrato en PENDING_DATA_VALIDATION.
                 session.refresh(contract)
             except Exception as exc:  # noqa: BLE001
                 import logging as _logging

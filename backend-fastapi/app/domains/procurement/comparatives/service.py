@@ -1182,16 +1182,24 @@ def approve_comparative(
                         schedule_exc,
                     )
 
-    # Tras aprobar el comparativo NO auto-generamos ni auto-avanzamos el
-    # contrato. Solo asignamos la carga administrativa de forma equitativa.
+    # Tras aprobar totalmente el comparativo, el contrato debe quedar ya
+    # generado para la cola administrativa, sin paso manual de "activación".
+    # Si el proveedor requiere onboarding, ese flujo ya lo habrá dejado en
+    # PENDING_SUPPLIER y no avanzamos más hasta que complete datos.
     try:
-        if contract_crud.ensure_contract_admin_assignment(session, contract=contract):
-            session.commit()
-            session.refresh(contract)
+        from app.domains.procurement.contracts.workflow_service import (
+            auto_progress_after_comparative_approval,
+        )
+
+        contract = auto_progress_after_comparative_approval(
+            session,
+            contract=contract,
+        )
+        session.refresh(contract)
     except Exception as exc:  # noqa: BLE001
         session.rollback()
         logger.warning(
-            "ensure_contract_admin_assignment fallo contract_id=%s: %s",
+            "auto_progress_after_comparative_approval fallo contract_id=%s: %s",
             contract.id,
             exc,
         )
@@ -1481,4 +1489,3 @@ def auto_approve_stale_comparatives(
         approved += 1
 
     return {"approved": approved, "errors": errors, "scanned": len(contracts)}
-

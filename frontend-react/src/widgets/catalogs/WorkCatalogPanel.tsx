@@ -285,7 +285,7 @@ export const WorkCatalogPanel: React.FC<WorkCatalogPanelProps> = ({
           <HStack justify="space-between" mb={4}>
             <Input
               maxW="360px"
-              placeholder={isWorksites ? "Buscar obra o cliente" : "Buscar proveedor"}
+              placeholder={isWorksites ? "Buscar obra o promotor" : "Buscar proveedor"}
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
@@ -301,7 +301,7 @@ export const WorkCatalogPanel: React.FC<WorkCatalogPanelProps> = ({
                   <Tr>
                     <Th>Nº obra</Th>
                     <Th>Nombre</Th>
-                    <Th>Cliente</Th>
+                    <Th>Promotor</Th>
                     {canEdit ? <Th textAlign="right">Acciones</Th> : null}
                   </Tr>
                 </Thead>
@@ -442,7 +442,7 @@ export const WorkCatalogPanel: React.FC<WorkCatalogPanelProps> = ({
                 />
               </FormControl>
               <FormControl>
-                <FormLabel>Cliente</FormLabel>
+                <FormLabel>Promotor</FormLabel>
                 <Input
                   value={workForm.client_name}
                   onChange={(e) =>

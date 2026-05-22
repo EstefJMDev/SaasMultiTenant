@@ -310,6 +310,7 @@ export const ContractsModule: React.FC<ContractsModuleProps> = ({
   const viewModeRef = useRef(viewMode);
   const currentContractRef = useRef<Contract | null>(null);
   const newFlowContractIdRef = useRef<number | null>(null);
+  const suppressNextSaveToastRef = useRef(false);
   useEffect(() => { currentViewRef.current = currentView; }, [currentView]);
   useEffect(() => { viewModeRef.current = viewMode; }, [viewMode]);
   const setCurrentView: React.Dispatch<React.SetStateAction<ViewState>> = (value) => {
@@ -771,6 +772,10 @@ export const ContractsModule: React.FC<ContractsModuleProps> = ({
       void queryClient.invalidateQueries({
         queryKey: contractsBaseKey,
       });
+      if (suppressNextSaveToastRef.current) {
+        suppressNextSaveToastRef.current = false;
+        return;
+      }
       const isComparativeEditingContext =
         scope === "comparatives" || currentView === "comparativo-review";
       toast({
@@ -8678,8 +8683,10 @@ const ComparativoReview: React.FC<ComparativoReviewProps> = ({
               }
               if (!isInfoReadOnly && currentContract) {
                 try {
+                  suppressNextSaveToastRef.current = true;
                   await onSaveIntake(buildIntakePayload());
                 } catch {
+                  suppressNextSaveToastRef.current = false;
                   // Si falla el guardado, igualmente avanzamos a Información.
                 }
               }
