@@ -256,18 +256,15 @@ def auto_progress_after_comparative_approval(
     *,
     contract: Contract,
 ) -> Contract:
-    """Avanza el contrato post-aprobación de comparativo saltando fases manuales
-    cuando es posible y seguro hacerlo:
+    """Avanza el contrato post-aprobación de comparativo.
 
-    1. DRAFT → PENDING_TEMPLATE: si el `type` del contrato ya está fijado.
-    2. PENDING_TEMPLATE → PENDING_DATA_VALIDATION: si existe una única plantilla
-       activa para ese `type` (sin ambigüedad).
+    Flujo deseado:
+    1. Si hay una única plantilla activa para el tipo del contrato, se asigna.
+    2. Se genera automáticamente el PDF.
+    3. El contrato queda en DRAFT para revisión de Administración.
 
-    Si en algún paso falta información (tipo no fijado, varias plantillas o
-    ninguna), se detiene y se deja al admin retomar el flujo manualmente.
-
-    Importante: NO genera el documento ni cambia de tenant. Solo persiste
-    transiciones de estado y deja el contrato listo para la fase siguiente.
+    Si el tipo no está fijado o hay varias plantillas posibles, se deja en
+    `PENDING_TEMPLATE` para que Administración seleccione plantilla.
     """
     if contract.comparative_status != ComparativeStatus.APPROVED:
         return contract
@@ -281,25 +278,8 @@ def auto_progress_after_comparative_approval(
     status_value = getattr(contract.status, "value", contract.status)
     current_status = str(status_value or "").strip().upper()
 
-    # Paso 1: DRAFT → PENDING_TEMPLATE si ya conocemos el tipo.
-    if current_status == ContractStatus.DRAFT.value and contract.type is not None:
-        contract.status = ContractStatus.PENDING_TEMPLATE
-        contract.updated_at = datetime.now(timezone.utc)
-        session.add(contract)
-        contract_crud.ensure_contract_admin_assignment(session, contract=contract)
-        session.flush()
-        contract_crud._log_event(
-            session,
-            tenant_id=contract.tenant_id,
-            contract_id=contract.id,
-            user_id=None,
-            event_type="contract.auto_activated",
-            payload={"type": getattr(contract.type, "value", str(contract.type))},
-        )
-        current_status = ContractStatus.PENDING_TEMPLATE.value
-
-    # Paso 2: PENDING_TEMPLATE → PENDING_DATA_VALIDATION si hay plantilla única.
-    if current_status == ContractStatus.PENDING_TEMPLATE.value and contract.type is not None:
+    # Paso 1: si ya conocemos el tipo, intentamos resolver plantilla única.
+    if contract.type is not None:
         # ContractTemplate.subtype guarda el valor en minúsculas
         # (ContractSubtype: "subcontratacion" | "servicio" | "suministro"),
         # mientras que Contract.type es ContractType en mayúsculas.
@@ -314,7 +294,6 @@ def auto_progress_after_comparative_approval(
         if len(templates) == 1:
             template = templates[0]
             contract.template_id = template.id
-            contract.status = ContractStatus.PENDING_DATA_VALIDATION
             contract.updated_at = datetime.now(timezone.utc)
             session.add(contract)
             contract_crud.ensure_contract_admin_assignment(session, contract=contract)
@@ -327,50 +306,44 @@ def auto_progress_after_comparative_approval(
                 event_type="contract.auto_template_selected",
                 payload={"template_id": template.id, "template_name": template.name},
             )
-            current_status = ContractStatus.PENDING_DATA_VALIDATION.value
+        elif current_status == ContractStatus.DRAFT.value:
+            contract.status = ContractStatus.PENDING_TEMPLATE
+            contract.updated_at = datetime.now(timezone.utc)
+            session.add(contract)
+            contract_crud.ensure_contract_admin_assignment(session, contract=contract)
+            session.flush()
+            contract_crud._log_event(
+                session,
+                tenant_id=contract.tenant_id,
+                contract_id=contract.id,
+                user_id=None,
+                event_type="contract.auto_activated",
+                payload={"type": getattr(contract.type, "value", str(contract.type))},
+            )
+            current_status = ContractStatus.PENDING_TEMPLATE.value
 
-    # Paso 3: generar automáticamente el PDF del contrato cuando la plantilla
-    # y los datos mínimos ya estén listos. `generate_contract_from_template`
-    # deja el contrato en PENDING_DATA_VALIDATION, es decir, "generado y en
-    # borrador" para Administración.
-    if (
-        current_status == ContractStatus.PENDING_DATA_VALIDATION.value
-        and contract.template_id is not None
-    ):
+    # Paso 2: generar automáticamente el PDF si ya hay plantilla asignada.
+    if contract.template_id is not None:
         try:
-            validation = validate_contract_fields(session, contract=contract)
+            from app.domains.procurement.contracts.document_generator import (
+                generate_contract_from_template,
+            )
+
+            generate_contract_from_template(
+                session,
+                contract=contract,
+                created_by_id=None,
+            )
+            session.refresh(contract)
         except Exception as exc:  # noqa: BLE001
             import logging as _logging
             _logging.getLogger("app.platform.contracts_core").warning(
-                "auto_progress: validate_contract_fields fallo contract_id=%s: %s",
+                "auto_progress: generate_contract_from_template fallo contract_id=%s: %s",
                 contract.id,
                 exc,
             )
-            return contract
-
-        if validation.is_complete:
-            try:
-                from app.domains.procurement.contracts.document_generator import (
-                    generate_contract_from_template,
-                )
-
-                generate_contract_from_template(
-                    session,
-                    contract=contract,
-                    created_by_id=None,
-                )
-                # generate_contract_from_template hace commit y refresh
-                # internamente y deja el contrato en PENDING_DATA_VALIDATION.
-                session.refresh(contract)
-            except Exception as exc:  # noqa: BLE001
-                import logging as _logging
-                _logging.getLogger("app.platform.contracts_core").warning(
-                    "auto_progress: generate_contract_from_template fallo contract_id=%s: %s",
-                    contract.id,
-                    exc,
-                )
-                # Best-effort: no rompemos la aprobación si falla la generación.
-                # El admin podrá disparar la generación manualmente más tarde.
+            # Best-effort: el comparativo queda aprobado y Administración podrá
+            # regenerar manualmente el contrato si falta algún dato extraordinario.
 
     return contract
 

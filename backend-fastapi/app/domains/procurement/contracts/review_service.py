@@ -426,7 +426,7 @@ def admin_approve_draft(
 ) -> Contract:
     """Administración aprueba el contrato en fase borrador.
 
-    Transición: PENDING_DATA_VALIDATION → PENDING_REVIEW.
+    Transición: DRAFT/PENDING_DATA_VALIDATION → PENDING_REVIEW.
     Slot ADMIN se crea ya APPROVED; JURIDICO/JEFE_OBRA/DIRECTOR_TECNICO quedan
     PENDING. Si es un re-envío tras rechazo, abre un cycle_number nuevo.
     """
@@ -438,11 +438,14 @@ def admin_approve_draft(
         )
 
     contract = contract_crud._get_contract_or_404(session, contract_id, tenant_id)
-    if contract.status != ContractStatus.PENDING_DATA_VALIDATION:
+    if contract.status not in {
+        ContractStatus.DRAFT,
+        ContractStatus.PENDING_DATA_VALIDATION,
+    }:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
-                "El contrato debe estar en estado PENDING_DATA_VALIDATION "
+                "El contrato debe estar en estado DRAFT o PENDING_DATA_VALIDATION "
                 f"(actual: {contract.status.value})."
             ),
         )

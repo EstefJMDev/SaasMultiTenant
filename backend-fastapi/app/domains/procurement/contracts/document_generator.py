@@ -4,7 +4,7 @@ Generación de documento de contrato desde plantilla con sustitución de [VARIAB
 FASE 6A — Datos completos:
   - Sustituye [VAR] en .docx (python-docx) o .pdf (pdfplumber + reportlab + pypdf)
   - Output siempre PDF
-  - Deja contract.status en PENDING_DATA_VALIDATION (fase borrador Admin)
+  - Deja contract.status en DRAFT (fase borrador Admin)
 
 Usa generadores ya existentes cuando la plantilla es la que estaba en disco.
 """
@@ -596,11 +596,17 @@ def _build_substitution_context(
     fecha_escritura = _format_date_es(contract.deed_date or provider_deed_date)
 
     # Tokens SUBCONTRATACIÓN específicos (precios, trabajadores, garantía).
-    # Los valores numéricos vienen de columnas dedicadas en Contract.
+    # `NUM_TRAB` debe tolerar contratos donde el dato quedó solo en resources.
+    raw_num_trab = (
+        contract.min_workers
+        if contract.min_workers not in (None, "")
+        else resources_meta.get("workers_count")
+        or resources_meta.get("workers_on_site")
+    )
     precio_numero = _str(contract.total_amount)
     precio_letra = _amount_to_words_eur(contract.total_amount)
-    num_trab = _str(contract.min_workers)
-    num_trab_letra = _int_to_words_es(contract.min_workers)
+    num_trab = _str(raw_num_trab)
+    num_trab_letra = _int_to_words_es(raw_num_trab)
     garantia = _str(contract.warranty_text or contract.insurance_amount)
     # Token SERVICIOS: tipo de servicio acordado.
     tipo_servicio = _str(contract.service_category)
@@ -994,7 +1000,7 @@ def generate_contract_from_template(
 ) -> ContractDocument:
     """
     FASE 6A — Genera el PDF final del contrato sustituyendo [VARIABLES] de la plantilla.
-    Deja contract.status en PENDING_DATA_VALIDATION (fase borrador editable solo
+    Deja contract.status en DRAFT (fase borrador editable solo
     por Administración). El paso a PENDING_REVIEW lo dispara Admin con
     `admin_approve_draft` (review_service).
     Crea o actualiza ContractDocument(type=CONTRACT).
@@ -1110,12 +1116,12 @@ def generate_contract_from_template(
         )
         session.add(doc)
 
-    # Tras generar el PDF el contrato se queda en PENDING_DATA_VALIDATION
+    # Tras generar el PDF el contrato se queda en DRAFT
     # (fase borrador editable SOLO por Administración). Cuando Admin pulse
     # "Aprobar" el contrato pasa a PENDING_REVIEW y se abren los slots
     # JURIDICO/JEFE_OBRA/DIRECTOR_TECNICO (el de ADMIN queda ya aprobado).
-    if contract.status != ContractStatus.PENDING_DATA_VALIDATION:
-        contract.status = ContractStatus.PENDING_DATA_VALIDATION
+    if contract.status != ContractStatus.DRAFT:
+        contract.status = ContractStatus.DRAFT
     contract.updated_at = datetime.now(timezone.utc)
     session.add(contract)
     contract_crud.ensure_contract_admin_assignment(session, contract=contract)

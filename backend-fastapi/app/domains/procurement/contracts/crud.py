@@ -730,7 +730,7 @@ def ensure_contract_admin_assignment(
     """Asigna un administrativo de forma equitativa para la cola inicial.
 
     Distribución: menor número de contratos activos asignados en fase
-    administrativa (`PENDING_TEMPLATE` / `PENDING_DATA_VALIDATION`).
+    administrativa (`DRAFT` / `PENDING_TEMPLATE` / `PENDING_DATA_VALIDATION`).
     """
     candidates = _list_admin_assignment_candidates(session, tenant_id=contract.tenant_id)
     if not candidates:
@@ -738,6 +738,7 @@ def ensure_contract_admin_assignment(
 
     candidate_ids = [candidate_id for candidate_id, _ in candidates]
     active_statuses = [
+        ContractStatus.DRAFT,
         ContractStatus.PENDING_TEMPLATE,
         ContractStatus.PENDING_DATA_VALIDATION,
     ]

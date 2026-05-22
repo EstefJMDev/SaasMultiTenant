@@ -781,11 +781,11 @@ export const ContractsModule: React.FC<ContractsModuleProps> = ({
       toast({
         status: "success",
         title: isComparativeEditingContext
-          ? `Comparativo guardado (CT-${contract.id})`
+          ? "Borrador guardado"
           : `Contrato guardado (CT-${contract.id})`,
         description:
           isComparativeEditingContext
-            ? "Los cambios del comparativo se han guardado correctamente."
+            ? undefined
             : contract.status === "PENDING_DATA_VALIDATION"
             ? "Los cambios del borrador administrativo se han guardado correctamente."
             : "Los cambios del contrato se han guardado correctamente.",
@@ -1055,7 +1055,6 @@ export const ContractsModule: React.FC<ContractsModuleProps> = ({
         toast({
           status: "success",
           title: "Comparativo enviado",
-          description: "Pendiente de aprobación por gerencia.",
         });
       }
     },
@@ -1871,6 +1870,20 @@ export const ContractsModule: React.FC<ContractsModuleProps> = ({
                   payload,
                 });
                 setCurrentContract(updated);
+              }}
+              onSaveIntakeSilently={async (payload) => {
+                if (!currentContract) return;
+                suppressNextSaveToastRef.current = true;
+                try {
+                  const updated = await updateContractMutation.mutateAsync({
+                    contractId: currentContract.id,
+                    payload,
+                  });
+                  setCurrentContract(updated);
+                } catch (error) {
+                  suppressNextSaveToastRef.current = false;
+                  throw error;
+                }
               }}
               onSubmitComparative={async () => {
                 if (!currentContract) return;
@@ -4738,7 +4751,7 @@ const ComparativoManual: React.FC<ComparativoManualProps> = ({
       onComplete({ type: "manual", ofertas, lineas });
       toast({
         status: "success",
-        title: `Borrador guardado (CT-${saved.id})`,
+        title: "Borrador guardado",
       });
     } catch (error) {
       toast({
@@ -5251,6 +5264,7 @@ interface ComparativoReviewProps {
   onNavigate: (view: ViewState) => void;
   onChangeContract: (contractId: number) => void;
   onSaveIntake: (payload: ContractUpdatePayload) => Promise<void> | void;
+  onSaveIntakeSilently?: (payload: ContractUpdatePayload) => Promise<void> | void;
   onSaveDraft: () => Promise<void> | void;
   onSubmitComparative: () => Promise<Contract | undefined> | void;
   onValidateRea?: () => Promise<ReaValidationResult | null>;
@@ -5830,6 +5844,7 @@ const ComparativoReview: React.FC<ComparativoReviewProps> = ({
   onNavigate,
   onChangeContract,
   onSaveIntake,
+  onSaveIntakeSilently,
   onSaveDraft,
   onSubmitComparative,
   onValidateRea,
@@ -5967,8 +5982,18 @@ const ComparativoReview: React.FC<ComparativoReviewProps> = ({
   const [retencionDescripcion, setRetencionDescripcion] = useState("");
   const [observacionesAdicionales, setObservacionesAdicionales] = useState("");
   const [portes, setPortes] = useState("");
-  const infoSubTab: "comparativo" | "informacion" = initialSubTab ?? "comparativo";
+  const [localInfoSubTab, setLocalInfoSubTab] = useState<
+    "comparativo" | "informacion"
+  >(initialSubTab ?? "comparativo");
+  useEffect(() => {
+    if (initialSubTab) {
+      setLocalInfoSubTab(initialSubTab);
+    }
+  }, [initialSubTab]);
+  const infoSubTab: "comparativo" | "informacion" =
+    initialSubTab ?? localInfoSubTab;
   const setInfoSubTab = (next: "comparativo" | "informacion") => {
+    setLocalInfoSubTab(next);
     onSubTabChange?.(next);
   };
   const topAnchorRef = useRef<HTMLDivElement | null>(null);
@@ -6757,7 +6782,7 @@ const ComparativoReview: React.FC<ComparativoReviewProps> = ({
   };
 
   const handleContinueToContract = async () => {
-    await onSaveIntake(buildIntakePayload());
+    await (onSaveIntakeSilently ?? onSaveIntake)(buildIntakePayload());
     onNavigate("contrato-form");
   };
 
@@ -6766,7 +6791,7 @@ const ComparativoReview: React.FC<ComparativoReviewProps> = ({
       await onSaveDraft();
       return;
     }
-    await onSaveIntake(buildIntakePayload());
+    await (onSaveIntakeSilently ?? onSaveIntake)(buildIntakePayload());
     await onSaveDraft();
   };
 
@@ -6870,7 +6895,7 @@ const ComparativoReview: React.FC<ComparativoReviewProps> = ({
       onNavigate("approval-panel");
       return;
     }
-    await onSaveIntake(buildIntakePayload());
+    await (onSaveIntakeSilently ?? onSaveIntake)(buildIntakePayload());
     const result = await onSubmitComparative();
     if (result && (result as Contract).status === "PENDING_SUPPLIER") {
       // Comparativo gateado a la espera de que el proveedor complete onboarding.
@@ -6890,7 +6915,7 @@ const ComparativoReview: React.FC<ComparativoReviewProps> = ({
     setReaStep("rea");
     try {
       // Persistir el formulario (con el CIF/NIF) antes de consultar REA.
-      await onSaveIntake(buildIntakePayload());
+      await (onSaveIntakeSilently ?? onSaveIntake)(buildIntakePayload());
       const res = await onValidateRea();
       if (!res) {
         setReaStep("review");
@@ -6924,7 +6949,7 @@ const ComparativoReview: React.FC<ComparativoReviewProps> = ({
 
   const handleSaveDraftFromNoConsta = async () => {
     try {
-      await onSaveIntake(buildIntakePayload());
+      await (onSaveIntakeSilently ?? onSaveIntake)(buildIntakePayload());
       await onSaveDraft();
       toast({
         status: "info",
@@ -8683,10 +8708,10 @@ const ComparativoReview: React.FC<ComparativoReviewProps> = ({
               }
               if (!isInfoReadOnly && currentContract) {
                 try {
-                  suppressNextSaveToastRef.current = true;
-                  await onSaveIntake(buildIntakePayload());
+                  await (onSaveIntakeSilently ?? onSaveIntake)(
+                    buildIntakePayload(),
+                  );
                 } catch {
-                  suppressNextSaveToastRef.current = false;
                   // Si falla el guardado, igualmente avanzamos a Información.
                 }
               }
@@ -9789,6 +9814,19 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
       ""
     );
   })();
+  const shouldAutoRefreshPdf =
+    Boolean(contract?.id) &&
+    ["DRAFT", "PENDING_DATA_VALIDATION", "PENDING_REVIEW"].includes(
+      contract?.status ?? "",
+    ) &&
+    userCanRegenerateContract;
+
+  const persistContractAndRefreshPdf = async () => {
+    await onSave(buildSavePayload());
+    if (shouldAutoRefreshPdf) {
+      await onRegenerateContract();
+    }
+  };
 
   return (
     <Stack spacing={6}>
@@ -10155,7 +10193,7 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
                   setIsGeneratingSupplierLink(true);
                   // Asegura persistir NIF/CIF y resto de datos visibles en formulario
                   // antes de pedir el enlace de onboarding.
-                  await onSave(buildSavePayload());
+                  await persistContractAndRefreshPdf();
                   const linkPayload = await regenerateSupplierOnboardingLink(
                     contract.id,
                     {
@@ -10491,7 +10529,7 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
                   return;
                 }
                 try {
-                  await onSave(buildSavePayload());
+                  await persistContractAndRefreshPdf();
                 } catch {
                   // El error ya se muestra en el onError de la mutación.
                 }
@@ -10516,7 +10554,7 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
                   return;
                 }
                 try {
-                  await onSave(buildSavePayload());
+                  await persistContractAndRefreshPdf();
                   await onSubmit();
                 } catch {
                   // Las mutaciones muestran el detalle en sus propios onError.
@@ -13261,21 +13299,13 @@ const WorkflowActionsPanel: React.FC<WorkflowActionsPanelProps> = ({
       </Box>
       <Stack spacing={4} p={6}>
 
-        {/* FASE 3 — Activar */}
+        {/* BORRADOR ADMINISTRATIVO AUTO-GENERADO */}
         {status === "DRAFT" && contract.comparative_status === "APPROVED" && isAdminRole && (
           <Stack spacing={3}>
             <Alert status="success" borderRadius="md">
               <AlertIcon />
-              Comparativo aprobado por Gerencia. Puedes activar el contrato.
+              El contrato se ha generado automáticamente y queda en borrador para Administración.
             </Alert>
-            <Button
-              colorScheme="brand"
-              leftIcon={<Check size={16} />}
-              isLoading={isLoading}
-              onClick={() => onActivate()}
-            >
-              Activar Contrato (Fase 3)
-            </Button>
           </Stack>
         )}
 
