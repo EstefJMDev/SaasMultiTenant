@@ -920,6 +920,12 @@ export const ContractsModule: React.FC<ContractsModuleProps> = ({
         queryKey: contractsBaseKey,
       });
       const fullyApproved = contract.comparative_status === "APPROVED";
+      if (fullyApproved) {
+        setNewFlowContractId(null);
+        setViewMode("ver");
+        setCurrentView("contrato-form");
+        void contractsQuery.refetch();
+      }
       toast({
         status: "success",
         title: "Comparativo aprobado",
@@ -1071,14 +1077,25 @@ export const ContractsModule: React.FC<ContractsModuleProps> = ({
   });
 
   const regenerateContractPdfMutation = useMutation({
-    mutationFn: (contractId: number) =>
-      regenerateContractPdf(contractId, effectiveTenantId),
-    onSuccess: (contract) => {
+    mutationFn: ({
+      contractId,
+      silent = false,
+    }: {
+      contractId: number;
+      silent?: boolean;
+    }) =>
+      regenerateContractPdf(contractId, effectiveTenantId).then((contract) => ({
+        contract,
+        silent,
+      })),
+    onSuccess: ({ contract, silent }) => {
       setCurrentContract(contract);
       void queryClient.invalidateQueries({
         queryKey: contractsBaseKey,
       });
-      toast({ status: "success", title: "Contrato regenerado" });
+      if (!silent) {
+        toast({ status: "success", title: "Contrato regenerado" });
+      }
     },
     onError: (error) => {
       toast({
@@ -1941,6 +1958,7 @@ export const ContractsModule: React.FC<ContractsModuleProps> = ({
                 canManageWorkflow={isContractAdmin}
                 viewMode={viewMode}
                 onSwitchToEdit={() => setViewMode("editar")}
+                onSwitchToView={() => setViewMode("ver")}
                 isSubmittingGerencia={submitGerenciaMutation.isPending}
                 isPreparingDocs={generateDocsMutation.isPending}
                 isRegeneratingContract={regenerateContractPdfMutation.isPending}
@@ -1954,9 +1972,16 @@ export const ContractsModule: React.FC<ContractsModuleProps> = ({
                 }}
                 onRegenerateContract={async () => {
                   if (!currentContract) return;
-                  await regenerateContractPdfMutation.mutateAsync(
-                    currentContract.id,
-                  );
+                  await regenerateContractPdfMutation.mutateAsync({
+                    contractId: currentContract.id,
+                  });
+                }}
+                onRegenerateContractSilently={async () => {
+                  if (!currentContract) return;
+                  await regenerateContractPdfMutation.mutateAsync({
+                    contractId: currentContract.id,
+                    silent: true,
+                  });
                 }}
                 onSubmit={async () => {
                   if (!currentContract) return;
@@ -2021,53 +2046,56 @@ export const ContractsModule: React.FC<ContractsModuleProps> = ({
                     // Los detalles concretos ya se notifican en onError de cada mutación.
                   }
                 }}
+                workflowPanel={
+                  currentContract ? (
+                    <WorkflowActionsPanel
+                      contract={currentContract}
+                      tenantId={effectiveTenantId}
+                      isAdmin={isContractAdmin}
+                      roleName={roleName}
+                      embedded
+                      onActivate={(subtype) =>
+                        activateContractMutation.mutate({
+                          contractId: currentContract.id,
+                          subtype,
+                        })
+                      }
+                      onSelectTemplate={(templateId) =>
+                        selectTemplateMutation.mutate({
+                          contractId: currentContract.id,
+                          templateId,
+                        })
+                      }
+                      onGenerateDocument={() =>
+                        generateDocumentMutation.mutate(currentContract.id)
+                      }
+                      onAdminApproveDraft={() =>
+                        adminApproveDraftMutation.mutate(currentContract.id)
+                      }
+                      onReviewDecision={(approved, comment) =>
+                        reviewDecisionMutation.mutate({
+                          contractId: currentContract.id,
+                          approved,
+                          comment,
+                        })
+                      }
+                      onSendForSignature={() =>
+                        sendForSignatureMutation.mutate(currentContract.id)
+                      }
+                      onOpenDocumentPreview={openContractDocumentPreview}
+                      onDownloadDocument={downloadContractDocumentFile}
+                      isLoading={
+                        activateContractMutation.isPending ||
+                        selectTemplateMutation.isPending ||
+                        generateDocumentMutation.isPending ||
+                        adminApproveDraftMutation.isPending ||
+                        reviewDecisionMutation.isPending ||
+                        sendForSignatureMutation.isPending
+                      }
+                    />
+                  ) : null
+                }
               />
-              {currentContract && (
-                <WorkflowActionsPanel
-                  contract={currentContract}
-                  tenantId={effectiveTenantId}
-                  isAdmin={isContractAdmin}
-                  roleName={roleName}
-                  onActivate={(subtype) =>
-                    activateContractMutation.mutate({
-                      contractId: currentContract.id,
-                      subtype,
-                    })
-                  }
-                  onSelectTemplate={(templateId) =>
-                    selectTemplateMutation.mutate({
-                      contractId: currentContract.id,
-                      templateId,
-                    })
-                  }
-                  onGenerateDocument={() =>
-                    generateDocumentMutation.mutate(currentContract.id)
-                  }
-                  onAdminApproveDraft={() =>
-                    adminApproveDraftMutation.mutate(currentContract.id)
-                  }
-                  onReviewDecision={(approved, comment) =>
-                    reviewDecisionMutation.mutate({
-                      contractId: currentContract.id,
-                      approved,
-                      comment,
-                    })
-                  }
-                  onSendForSignature={() =>
-                    sendForSignatureMutation.mutate(currentContract.id)
-                  }
-                  onOpenDocumentPreview={openContractDocumentPreview}
-                  onDownloadDocument={downloadContractDocumentFile}
-                  isLoading={
-                    activateContractMutation.isPending ||
-                    selectTemplateMutation.isPending ||
-                    generateDocumentMutation.isPending ||
-                    adminApproveDraftMutation.isPending ||
-                    reviewDecisionMutation.isPending ||
-                    sendForSignatureMutation.isPending
-                  }
-                />
-              )}
             </>
           )}
           {currentView === "approval-panel" && (
@@ -8792,13 +8820,16 @@ interface ContratoFormProps {
   canManageWorkflow?: boolean;
   viewMode?: "ver" | "editar";
   onSwitchToEdit?: () => void;
+  onSwitchToView?: () => void;
   isSubmittingGerencia?: boolean;
   isPreparingDocs?: boolean;
   isRegeneratingContract?: boolean;
   onNavigate: (view: ViewState) => void;
   onSave: (payload: ContractUpdatePayload) => void | Promise<void>;
   onRegenerateContract: () => void | Promise<void>;
+  onRegenerateContractSilently?: () => void | Promise<void>;
   onSubmit: () => void | Promise<void>;
+  workflowPanel?: React.ReactNode;
 }
 
 const ContratoForm: React.FC<ContratoFormProps> = ({
@@ -8810,24 +8841,34 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
   canManageWorkflow = false,
   viewMode = "ver",
   onSwitchToEdit,
+  onSwitchToView,
   isSubmittingGerencia = false,
   isPreparingDocs = false,
   isRegeneratingContract = false,
   onNavigate,
   onSave,
   onRegenerateContract,
+  onRegenerateContractSilently,
   onSubmit,
+  workflowPanel,
 }) => {
   // Caps de contrato del usuario actual (OR Dept/Position). Si no las tiene,
   // el botón de regenerar no se muestra activo aunque otras condiciones lo
   // permitan.
   const { data: currentUserForCaps } = useCurrentUser();
   const userCanRegenerateContract = Boolean(
-    isSuperAdmin || currentUserForCaps?.can_regenerate_contract,
+    isSuperAdmin ||
+      currentUserForCaps?.can_regenerate_contract ||
+      currentUserForCaps?.can_edit_contract,
   );
   const userCanEditContract = Boolean(
     isSuperAdmin || currentUserForCaps?.can_edit_contract,
   );
+  const panelMutedBg = useColorModeValue("gray.50", "gray.900");
+  const desktopPaneHeight = { base: "auto", lg: "calc(100dvh - 112px)" };
+  const [isViewFieldsOpen, setIsViewFieldsOpen] = useState(false);
+  const [isViewWorkflowOpen, setIsViewWorkflowOpen] = useState(true);
+  const [pdfRefreshToken, setPdfRefreshToken] = useState(0);
   const isAssignedAdminDraft =
     (contract?.status ?? "DRAFT") === "PENDING_DATA_VALIDATION" &&
     !!currentUserForCaps?.id &&
@@ -9525,6 +9566,16 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
     return () => clearTimeout(timeoutId);
   }, [supplierTaxId, tipoContrato, contract?.tenant_id, toast]);
 
+  useEffect(() => {
+    if (isReadOnlyView) {
+      setIsViewFieldsOpen(false);
+      setIsViewWorkflowOpen(true);
+      return;
+    }
+    setIsViewFieldsOpen(true);
+    setIsViewWorkflowOpen(true);
+  }, [contract?.id, isReadOnlyView]);
+
   const buildSavePayload = (): ContractUpdatePayload => {
     const parsedTotalExecutionPrice = parseAmount(totalExecutionPrice);
     const executionTotal = getExecutionTotal();
@@ -9819,104 +9870,187 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
     ["DRAFT", "PENDING_DATA_VALIDATION", "PENDING_REVIEW"].includes(
       contract?.status ?? "",
     ) &&
-    userCanRegenerateContract;
+    (userCanRegenerateContract || userCanEditContract);
 
   const persistContractAndRefreshPdf = async () => {
     await onSave(buildSavePayload());
     if (shouldAutoRefreshPdf) {
-      await onRegenerateContract();
+      await (onRegenerateContractSilently ?? onRegenerateContract)();
+      setPdfRefreshToken((prev) => prev + 1);
     }
   };
 
   return (
     <Stack spacing={6}>
       {tabsNavigation}
-      {isReadOnlyView && (
-        <HStack justify="flex-end">
-          <Badge colorScheme="gray" px={2} py={1} rounded="md">
-            Modo lectura
-          </Badge>
-          {/* "Editar" solo aparece en las fases realmente editables del flujo:
-              DRAFT y el borrador administrativo asignado. */}
-          {userCanEditContract && !isLockedByStatus && onSwitchToEdit && (
-            <Button
-              size="sm"
-              colorScheme="blue"
-              variant="outline"
-              leftIcon={<FileText size={14} />}
-              onClick={onSwitchToEdit}
-            >
-              Editar
-            </Button>
-          )}
-        </HStack>
-      )}
       <Grid
         templateColumns={{ base: "1fr", lg: "minmax(0, 1fr) minmax(0, 1fr)" }}
         gap={6}
-        alignItems="start"
+        alignItems={{ base: "start", lg: "stretch" }}
       >
         <GridItem
           order={{ base: 1, lg: 0 }}
           alignSelf={{ base: "auto", lg: "stretch" }}
         >
-          <ContractPdfViewer
-            contractId={contract?.id}
-            tenantId={tenantId}
-            canRegenerate={!isReadOnlyView && userCanRegenerateContract}
-            onRegenerate={onRegenerateContract}
-            isRegenerating={isRegeneratingContract}
-          />
+          <Box
+            position={{ base: "static", lg: "sticky" }}
+            top={{ base: "auto", lg: 0 }}
+            h={desktopPaneHeight}
+          >
+            <ContractPdfViewer
+              contractId={contract?.id}
+              tenantId={tenantId}
+              canRegenerate={!isReadOnlyView && userCanRegenerateContract}
+              onRegenerate={onRegenerateContract}
+              isRegenerating={isRegeneratingContract}
+              refreshToken={pdfRefreshToken}
+            />
+          </Box>
         </GridItem>
-        <GridItem minW={0}>
+        <GridItem minW={0} display="flex">
       <Box
         bg={cardBg}
         border="1px solid"
         borderColor={borderColor}
         rounded="xl"
         overflow="hidden"
+        display="flex"
+        flexDirection="column"
+        flex="1"
+        h={desktopPaneHeight}
       >
         <Box px={6} py={5} borderBottom="1px solid" borderColor={borderColor}>
-          <Heading size="md" mb={title ? 1 : 3}>
-            {contract ? `CT-${contract.id}` : "Contrato nuevo"}
-          </Heading>
-          {title && (
-            <Text
-              fontSize="md"
-              fontWeight="medium"
-              color="gray.700"
-              mb={3}
-            >
-              {title}
-            </Text>
-          )}
-          <HStack spacing={2}>
-            <Badge
-              colorScheme="brand"
-              px={3}
-              py={1}
-              borderRadius="10px"
-              fontWeight={600}
-              textTransform="none"
-            >
-              {formatContractType(tipoContrato)}
-            </Badge>
-            {contract?.status && (
-              <Badge
-                colorScheme="gray"
-                px={3}
-                py={1}
-                borderRadius="10px"
-                fontWeight={500}
-                textTransform="none"
-              >
-                {formatContractStatus(contract.status)}
-              </Badge>
-            )}
-          </HStack>
+          <Flex
+            justify="space-between"
+            align={{ base: "start", lg: "center" }}
+            gap={4}
+            wrap="wrap"
+          >
+            <Box minW={0}>
+              <Heading size="md" mb={title ? 1 : 3}>
+                {contract ? `CT-${contract.id}` : "Contrato nuevo"}
+              </Heading>
+              {title && (
+                <Text
+                  fontSize="md"
+                  fontWeight="medium"
+                  color="gray.700"
+                  mb={3}
+                  noOfLines={2}
+                >
+                  {title}
+                </Text>
+              )}
+              <HStack spacing={2} flexWrap="wrap">
+                <Badge
+                  colorScheme="brand"
+                  px={3}
+                  py={1}
+                  borderRadius="10px"
+                  fontWeight={600}
+                  textTransform="none"
+                >
+                  {formatContractType(tipoContrato)}
+                </Badge>
+                {contract?.status && (
+                  <Badge
+                    colorScheme="gray"
+                    px={3}
+                    py={1}
+                    borderRadius="10px"
+                    fontWeight={500}
+                    textTransform="none"
+                  >
+                    {formatContractStatus(contract.status)}
+                  </Badge>
+                )}
+              </HStack>
+            </Box>
+            <HStack spacing={3} alignSelf={{ base: "stretch", lg: "center" }}>
+              {isReadOnlyView && (
+                <Badge colorScheme="gray" px={2} py={1} rounded="md">
+                  Modo lectura
+                </Badge>
+              )}
+              {!isReadOnlyView && onSwitchToView && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={onSwitchToView}
+                >
+                  Volver a vista
+                </Button>
+              )}
+              {isReadOnlyView &&
+                userCanEditContract &&
+                !isLockedByStatus &&
+                onSwitchToEdit && (
+                <Button
+                  size="sm"
+                  colorScheme="blue"
+                  variant="outline"
+                  leftIcon={<FileText size={14} />}
+                  onClick={onSwitchToEdit}
+                >
+                  Editar
+                </Button>
+              )}
+            </HStack>
+          </Flex>
         </Box>
 
-      <Box as="fieldset" disabled={isReadOnlyView} border="none" m={0} p={0}>
+      <Box
+        flex="1"
+        minH={0}
+        overflowY={{ base: "visible", lg: "auto" }}
+        bg={isReadOnlyView ? panelMutedBg : cardBg}
+      >
+      {isReadOnlyView ? (
+        <Box
+          bg={cardBg}
+          h="full"
+          display="flex"
+          flexDirection="column"
+          overflow="hidden"
+        >
+          <Box
+            bg="transparent"
+            borderBottom={isViewFieldsOpen || workflowPanel ? "1px solid" : "none"}
+            borderColor={borderColor}
+            overflow="hidden"
+          >
+            <Button
+              w="full"
+              justifyContent="space-between"
+              variant="ghost"
+              px={4}
+              py={3}
+              h="auto"
+              borderRadius="0"
+              onClick={() => setIsViewFieldsOpen((prev) => !prev)}
+              rightIcon={
+                isViewFieldsOpen ? (
+                  <ChevronDown size={16} />
+                ) : (
+                  <ChevronRight size={16} />
+                )
+              }
+              >
+                Campos del contrato
+              </Button>
+            {isViewFieldsOpen && (
+              <Box
+                as="fieldset"
+                disabled
+                border="none"
+                m={0}
+                p={0}
+                w="full"
+                borderTop="1px solid"
+                borderColor={borderColor}
+                maxH={{ base: "none", lg: "calc(100dvh - 260px)" }}
+                overflowY={{ base: "visible", lg: "auto" }}
+              >
       {isSuministro ? (
         <Box p={6}>
           <SuministroForm
@@ -10501,6 +10635,197 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
           </Text>
         </Box>
       </Stack>
+      )}
+              </Box>
+            )}
+          </Box>
+          {workflowPanel && (
+            <Box
+              bg="transparent"
+              overflow="hidden"
+            >
+              <Button
+                w="full"
+                justifyContent="space-between"
+                variant="ghost"
+                px={4}
+                py={3}
+                h="auto"
+                borderRadius="0"
+                onClick={() => setIsViewWorkflowOpen((prev) => !prev)}
+                rightIcon={
+                  isViewWorkflowOpen ? (
+                    <ChevronDown size={16} />
+                  ) : (
+                    <ChevronRight size={16} />
+                  )
+                }
+              >
+                Flujo de aprobación
+              </Button>
+              {isViewWorkflowOpen && (
+                <Box
+                  px={4}
+                  pb={4}
+                  w="full"
+                  borderTop="1px solid"
+                  borderColor={borderColor}
+                >
+                  {workflowPanel}
+                </Box>
+              )}
+            </Box>
+          )}
+        </Box>
+      ) : (
+        <Box as="fieldset" disabled={isReadOnlyView} border="none" m={0} p={0}>
+      {isSuministro ? (
+        <Box p={6}>
+          <SuministroForm
+            contractDate={dedicatedContractDate}
+            supplierLegalRepName={nombreGerente}
+            supplierLegalRepDni={nifGerente}
+            supplierAddress={supplierAddress}
+            supplierName={supplierName}
+            supplierTaxId={supplierTaxId}
+            projectName={dedicatedProjectName}
+            projectNumber={projectNumber}
+            promoter={promoter}
+            workStartDate={startDate}
+            workEndDate={endDate}
+            durationText={duracionObra}
+            milestonesText={milestones}
+            paymentMethod={paymentMethod}
+            paymentDays={paymentDays}
+            paymentMethodOtherText={paymentMethodOtherText}
+            freightResponsible={shippingType}
+            unloadingResponsible={unloadingType}
+            onSupplierLegalRepNameChange={setNombreGerente}
+            onSupplierLegalRepDniChange={setNifGerente}
+            onSupplierAddressChange={setSupplierAddress}
+            onSupplierNameChange={setSupplierName}
+            onSupplierTaxIdChange={setSupplierTaxId}
+            onProjectNumberChange={setProjectNumber}
+            onPromoterChange={setPromoter}
+            onWorkStartDateChange={setStartDate}
+            onWorkEndDateChange={setEndDate}
+            onDurationTextChange={setDuracionObra}
+            onMilestonesTextChange={setMilestones}
+            onPaymentMethodChange={setPaymentMethod}
+            onPaymentDaysChange={setPaymentDays}
+            onPaymentMethodOtherTextChange={setPaymentMethodOtherText}
+            onFreightResponsibleChange={setShippingType}
+            onUnloadingResponsibleChange={setUnloadingType}
+          />
+          {!isContractFormValid && (
+            <Alert status="warning" borderRadius="md" mt={6}>
+              <AlertIcon />
+              Faltan datos obligatorios:{" "}
+              {requiredFieldErrors.slice(0, 4).join(", ")}
+              {requiredFieldErrors.length > 4 ? "..." : ""}
+            </Alert>
+          )}
+        </Box>
+      ) : isSubcontratacion ? (
+        <Box p={6}>
+          <SubcontratacionForm
+            contractDate={dedicatedContractDate}
+            supplierLegalRepName={nombreGerente}
+            supplierLegalRepDni={nifGerente}
+            supplierAddress={supplierAddress}
+            supplierName={supplierName}
+            supplierTaxId={supplierTaxId}
+            deedType={deedType}
+            deedDate={deedDate}
+            notaryName={notaryName}
+            notaryProtocol={notaryProtocol}
+            projectName={dedicatedProjectName}
+            projectNumber={projectNumber}
+            promoter={promoter}
+            workStartDate={startDate}
+            workEndDate={endDate}
+            durationText={duracionObra}
+            milestonesText={milestones}
+            paymentMethod={paymentMethod}
+            paymentDays={paymentDays}
+            paymentMethodOtherText={paymentMethodOtherText}
+            priceNumber={totalExecutionPrice}
+            priceText={priceText}
+            numWorkers={workersCount}
+            warrantyText={warrantyText}
+            onSupplierLegalRepNameChange={setNombreGerente}
+            onSupplierLegalRepDniChange={setNifGerente}
+            onSupplierAddressChange={setSupplierAddress}
+            onSupplierNameChange={setSupplierName}
+            onSupplierTaxIdChange={setSupplierTaxId}
+            onDeedTypeChange={setDeedType}
+            onDeedDateChange={setDeedDate}
+            onNotaryNameChange={setNotaryName}
+            onNotaryProtocolChange={setNotaryProtocol}
+            onProjectNumberChange={setProjectNumber}
+            onPromoterChange={setPromoter}
+            onWorkStartDateChange={setStartDate}
+            onWorkEndDateChange={setEndDate}
+            onDurationTextChange={setDuracionObra}
+            onMilestonesTextChange={setMilestones}
+            onPaymentMethodChange={setPaymentMethod}
+            onPaymentDaysChange={setPaymentDays}
+            onPaymentMethodOtherTextChange={setPaymentMethodOtherText}
+            onPriceNumberChange={setTotalExecutionPrice}
+            onNumWorkersChange={setWorkersCount}
+            onWarrantyTextChange={setWarrantyText}
+          />
+          {!isContractFormValid && (
+            <Alert status="warning" borderRadius="md" mt={6}>
+              <AlertIcon />
+              Faltan datos obligatorios:{" "}
+              {requiredFieldErrors.slice(0, 4).join(", ")}
+              {requiredFieldErrors.length > 4 ? "..." : ""}
+            </Alert>
+          )}
+        </Box>
+      ) : isServicio ? (
+        <Box p={6}>
+          <ServicioForm
+            contractDate={dedicatedContractDate}
+            supplierLegalRepName={nombreGerente}
+            supplierLegalRepDni={nifGerente}
+            supplierAddress={supplierAddress}
+            supplierName={supplierName}
+            supplierTaxId={supplierTaxId}
+            projectName={dedicatedProjectName}
+            serviceType={serviceCategory}
+            workStartDate={startDate}
+            workEndDate={endDate}
+            paymentMethod={paymentMethod}
+            paymentDays={paymentDays}
+            paymentMethodOtherText={paymentMethodOtherText}
+            onSupplierLegalRepNameChange={setNombreGerente}
+            onSupplierLegalRepDniChange={setNifGerente}
+            onSupplierAddressChange={setSupplierAddress}
+            onSupplierNameChange={setSupplierName}
+            onSupplierTaxIdChange={setSupplierTaxId}
+            onServiceTypeChange={setServiceCategory}
+            onWorkStartDateChange={setStartDate}
+            onWorkEndDateChange={setEndDate}
+            onPaymentMethodChange={setPaymentMethod}
+            onPaymentDaysChange={setPaymentDays}
+            onPaymentMethodOtherTextChange={setPaymentMethodOtherText}
+          />
+          {!isContractFormValid && (
+            <Alert status="warning" borderRadius="md" mt={6}>
+              <AlertIcon />
+              Faltan datos obligatorios:{" "}
+              {requiredFieldErrors.slice(0, 4).join(", ")}
+              {requiredFieldErrors.length > 4 ? "..." : ""}
+            </Alert>
+          )}
+        </Box>
+      ) : (
+      <Stack spacing={8} p={6}>
+      </Stack>
+      )}
+      </Box>
       )}
       </Box>
 
@@ -13147,6 +13472,7 @@ interface WorkflowActionsPanelProps {
   tenantId?: number;
   isAdmin?: boolean;
   roleName?: string;
+  embedded?: boolean;
   onActivate: (subtype?: string) => void;
   onSelectTemplate: (templateId: number) => void;
   onGenerateDocument: () => void;
@@ -13171,6 +13497,7 @@ const WorkflowActionsPanel: React.FC<WorkflowActionsPanelProps> = ({
   tenantId,
   isAdmin,
   roleName,
+  embedded = false,
   onActivate,
   onSelectTemplate,
   onGenerateDocument,
@@ -13287,8 +13614,8 @@ const WorkflowActionsPanel: React.FC<WorkflowActionsPanelProps> = ({
     return null;
   }
 
-  return (
-    <Box bg={cardBg} border="1px solid" borderColor={borderColor} rounded="xl" overflow="hidden" mt={4}>
+  const content = (
+      <>
       <Box px={6} py={3} bg="blue.50" borderBottom="1px solid" borderColor={borderColor}>
         <HStack spacing={2}>
           <FileText size={16} color="#2b6cb0" />
@@ -13747,6 +14074,16 @@ const WorkflowActionsPanel: React.FC<WorkflowActionsPanelProps> = ({
           </Alert>
         )}
       </Stack>
+      </>
+  );
+
+  if (embedded) {
+    return <Box>{content}</Box>;
+  }
+
+  return (
+    <Box bg={cardBg} border="1px solid" borderColor={borderColor} rounded="xl" overflow="hidden" mt={4}>
+      {content}
     </Box>
   );
 };

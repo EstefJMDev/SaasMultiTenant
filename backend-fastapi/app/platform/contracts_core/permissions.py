@@ -231,7 +231,9 @@ def can_edit_contract(session: Session, user: User) -> bool:
 
 
 def can_regenerate_contract(session: Session, user: User) -> bool:
-    return _has_contract_cap(session, user, "can_regenerate_contract")
+    return _has_contract_cap(session, user, "can_regenerate_contract") or _has_contract_cap(
+        session, user, "can_edit_contract"
+    )
 
 
 def can_approve_contract(session: Session, user: User) -> bool:

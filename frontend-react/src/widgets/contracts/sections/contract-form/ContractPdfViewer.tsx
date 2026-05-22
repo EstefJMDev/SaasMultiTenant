@@ -21,6 +21,7 @@ interface ContractPdfViewerProps {
   canRegenerate?: boolean;
   onRegenerate?: () => void | Promise<void>;
   isRegenerating?: boolean;
+  refreshToken?: number;
 }
 
 export const ContractPdfViewer: React.FC<ContractPdfViewerProps> = ({
@@ -30,6 +31,7 @@ export const ContractPdfViewer: React.FC<ContractPdfViewerProps> = ({
   canRegenerate = false,
   onRegenerate,
   isRegenerating = false,
+  refreshToken = 0,
 }) => {
   const cardBg = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.700");
@@ -70,6 +72,11 @@ export const ContractPdfViewer: React.FC<ContractPdfViewerProps> = ({
     })();
   }, [canRegenerate, contractId, docType, onRegenerate, refresh, errorStatus]);
 
+  useEffect(() => {
+    if (!contractId) return;
+    refresh();
+  }, [contractId, refresh, refreshToken]);
+
   return (
     <Box
       bg={cardBg}
@@ -77,9 +84,7 @@ export const ContractPdfViewer: React.FC<ContractPdfViewerProps> = ({
       borderColor={borderColor}
       rounded="xl"
       overflow="hidden"
-      position={{ base: "static", lg: "sticky" }}
-      top={{ lg: 4 }}
-      h={{ base: "60vh", lg: "calc(100vh - 9rem)" }}
+      h="100%"
       display="flex"
       flexDirection="column"
     >
