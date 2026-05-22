@@ -1,0 +1,116 @@
+# === General ===
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.swp
+*.swo
+.env
+.env.*
+!.env.example
+*.sqlite3
+
+# Python / FastAPI (backend-fastapi, backend-django)
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.cache/
+venv/
+.venv/
+.vscode/
+.idea/
+
+# Node / React (frontend-react)
+node_modules/
+node_modules/react-icons/
+dist/
+build/
+coverage/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Docker / misc
+*.local
+.terraform/
+.envrc
+
+# Local data artifacts
+infra/data/
+**/*.pdf
+
+# Temporary debug/screenshot artifacts
+/tmp_*.png
+/tmp_latest_*.png
+/tmp-sign.png
+/tmp_endpoints.json
+/tmp-agent-log*.txt
+
+deploy/data/**
+!deploy/data/**/
+!deploy/data/**/.gitkeep
+
+db/backups/
+*.dump
+*.backup
+*.tar
+*.tar.gz
+*.zip
+
+*_log*.txt
+tmp-*.txt
+backend-fastapi/_tmp/
+
+# Generated trees / reports
+repo-tree.txt
+all-tree.txt
+
+# Runtime / local env
+.env
+*.local.env
+deploy/env/*.local.env
+
+# Cloudflare real config
+deploy/cloudflared/config.yml
+deploy/cloudflared/credentials.json
+deploy/cloudflared/*.json
+
+# Data/runtime
+deploy/data/**
+!deploy/data/**/
+!deploy/data/**/.gitkeep
+
+# Dumps/backups
+*.dump
+*.backup
+*.tar
+*.tar.gz
+*.zip
+*.sql.gz
+db/backups/
+
+# Temp/logs
+_tmp/
+backend-fastapi/_tmp/
+tmp-*.txt
+*-log*.txt
+*.log
+
+# Node/Python
+node_modules/
+dist/
+build/
+.venv/
+__pycache__/
+.pytest_cache/
+
+# Internal imports / private datasets
+db/internal/
+db/scripts/proveedores.sql
+*.csv

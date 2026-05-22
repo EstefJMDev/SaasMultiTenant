@@ -1,0 +1,1235 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel"
+  },
+  "settings": {
+    "title": "User settings",
+    "subtitle": "Manage your profile, password, and preferences.",
+    "profile": "Profile",
+    "email": "Email",
+    "fullName": "Full name",
+    "profilePhoto": "Profile photo",
+    "profilePhotoHint": "Allowed formats: JPG, PNG, or WebP (max 5MB).",
+    "darkMode": "Dark mode",
+    "saveProfile": "Save changes",
+    "password": "Change password",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm new password",
+    "updatePassword": "Update password",
+    "language": "Language",
+    "languageHelp": "Choose the UI language",
+    "languageOptions": {
+      "en": "English",
+      "es": "Spanish"
+    },
+    "messages": {
+      "loadErrorTitle": "Profile load error",
+      "loadErrorFallback": "Unable to load user information.",
+      "profileUpdatedTitle": "Profile updated",
+      "profileUpdatedDesc": "Your profile information was saved successfully.",
+      "profileUpdateErrorTitle": "Profile update error",
+      "profileUpdateErrorFallback": "Unable to update your profile (check the data).",
+      "profilePhotoUpdatedTitle": "Profile photo updated",
+      "profilePhotoUpdatedDesc": "Your profile photo was updated successfully.",
+      "profilePhotoUpdateErrorTitle": "Photo upload error",
+      "profilePhotoUpdateErrorFallback": "Unable to upload your profile photo.",
+      "passwordMissingTitle": "Missing data",
+      "passwordMissingDesc": "Fill in all password fields.",
+      "passwordMismatchTitle": "Password mismatch",
+      "passwordMismatchDesc": "The new password and confirmation must match.",
+      "passwordUpdatedTitle": "Password updated",
+      "passwordUpdatedDesc": "Your password was changed successfully.",
+      "passwordUpdateErrorTitle": "Password update error",
+      "passwordUpdateErrorFallback": "Unable to change the password."
+    }
+  },
+  "auth": {
+    "logoAlt": "Urdecon logo",
+    "login": {
+      "title": "Access URDECON INNOVA",
+      "subtitle": "Sign in with your corporate account",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Sign in"
+    },
+    "messages": {
+      "unexpectedTitle": "Error",
+      "unexpectedDesc": "Unexpected authentication response",
+      "invalidFallback": "Invalid credentials or server error",
+      "loginErrorTitle": "Login error"
+    }
+  },
+  "dashboard": {
+    "header": {
+      "eyebrow": "Main panel",
+      "title": "Operational dashboard",
+      "subtitle": "Activity summary, shortcuts, and key hours tracking."
+    },
+    "stats": {
+      "tenantsActive": "Active tenants",
+      "usersActive": "Active users",
+      "toolsActive": "Active tools",
+      "hoursToday": "Hours logged today",
+      "ticketsOpen": "Open tickets",
+      "ticketsInProgress": "Tickets in progress"
+    },
+    "actions": {
+      "title": "Quick actions",
+      "subtitle": "Manage your organization and access ERP, Moodle, and key platform tools.",
+      "manageTenants": "Create / manage tenants",
+      "manageUsers": "Manage users",
+      "viewTimeReport": "View time report",
+      "viewTickets": "View tickets",
+      "viewTools": "View tools"
+    },
+    "report": {
+      "title": "Filterable time report",
+      "project": "Project",
+      "from": "From",
+      "to": "To",
+      "userContains": "User (contains)",
+      "userPlaceholder": "Ex: jmiralles",
+      "loadingProjects": "Loading projects...",
+      "allProjects": "All projects",
+      "refresh": "Refresh report",
+      "totalHours": "Total hours",
+      "entries": "Entries",
+      "status": "Status",
+      "statusReady": "Data ready",
+      "statusEmpty": "No data"
+    },
+    "table": {
+      "project": "Project",
+      "task": "Task",
+      "user": "User",
+      "rate": "Rate/hour",
+      "hours": "Hours",
+      "empty": "No data for the selected filters yet.",
+      "unassignedUser": "Unassigned user"
+    },
+    "tools": {
+      "title": "Available tools",
+      "subtitle": "Access corporate apps linked to your tenant.",
+      "loading": "Loading tools...",
+      "embeddedFallback": "Tool integrated into the platform.",
+      "erpNote": "Internal ERP integrated into the dashboard to manage projects, tasks, and time tracking."
+    },
+    "hrAvailability": {
+      "title": "Available hours by degree",
+      "available": "Available",
+      "filterLabel": "Degree",
+      "filterAll": "All",
+      "filterDoctorado": "Doctorate",
+      "filterUniversitario": "University",
+      "filterNoUniversitario": "Non-university",
+      "countTitle": "Employees by degree",
+      "loading": "Loading availability...",
+      "empty": "No available hours recorded."
+    },
+    "balanceByDepartment": {
+      "title": "Annualized balance by department",
+      "projectLabel": "Project",
+      "projectPlaceholder": "Select project",
+      "departmentLabel": "Department",
+      "noDepartment": "No department",
+      "emptyProject": "Select a project to see the balance.",
+      "loading": "Calculating balance...",
+      "empty": "No budget data for this project.",
+      "months": "{{count}} months"
+    },
+    "balanceHistory": {
+      "title": "Annualized projection",
+      "subtitle": "Select projects to compare",
+      "activeLabel": "Active",
+      "empty": "No projects with dates and budgets.",
+      "kpiLastYear": "Latest year {{year}}",
+      "kpiGrowth": "Growth",
+      "kpiGrowthSub": "Year over year",
+      "kpiTotal": "Total projected",
+      "kpiTotalSub": "Historical total",
+      "kpiBest": "Best project",
+      "chartTitle": "Projection by year",
+      "tableTitle": "Project by year detail",
+      "tableYear": "Year",
+      "tableTotal": "Total",
+      "axisLabel": "Profit (EUR)"
+    },
+    "messages": {
+      "reportLoadTitle": "Report load error",
+      "reportLoadFallback": "Unable to load the time report.",
+      "toolLaunchTitle": "Tool launch error",
+      "toolLaunchFallback": "Unable to launch the tool (check permissions and configuration)."
+    }
+  },
+  "layout": {
+    "brand": {
+      "logoAlt": "Urdecon logo",
+      "title": "URDECON INNOVA",
+      "subtitle": "Corporate SaaS platform"
+    },
+    "sections": {
+      "navigation": "Navigation",
+      "administration": "Administration",
+      "departments": "Departments"
+    },
+    "nav": {
+      "dashboard": "Dashboard",
+      "erp": "ERP",
+      "timeReport": "Time report",
+      "timeControl": "Time control",
+      "tasks": "Tasks",
+      "projects": "Projects",
+      "comparatives": "Comparatives",
+      "workManagement": "Work management",
+      "legal": "Legal",
+      "administrationDept": "Administration",
+      "departmentPanel": "Overview",
+      "departmentContracts": "Contracts",
+      "legalContracts": "Legal Contracts",
+      "administrationContracts": "Administration Contracts",
+      "externalCollaborations": "External collaborations",
+      "users": "Users",
+      "hr": "Human resources",
+      "hrDepartments": "Departments",
+      "hrPositions": "Positions",
+      "hrEmployees": "Employees",
+      "hrTalent": "Talent",
+      "support": "Support",
+      "tools": "Tools",
+      "audit": "Audit",
+      "settings": "Settings",
+      "departmentEmails": "Emails",
+      "tenantSettings": "Tenant settings",
+      "branding": "Branding",
+      "simulations": "Simulations"
+    },
+    "header": {
+      "title": "Control panel",
+      "subtitle": "Overview of your organization and tools"
+    },
+    "userMenu": {
+      "settings": "User settings",
+      "logout": "Sign out"
+    },
+    "user": {
+      "fallbackName": "User",
+      "fallbackEmail": "user@local"
+    }
+  },
+  "externalCollaborations": {
+    "header": {
+      "eyebrow": "Internal ERP",
+      "title": "External collaborations",
+      "subtitle": "Manage universities, audits, consultancies, and tech centers."
+    },
+    "actions": {
+      "addNew": "Add collaborator +"
+    },
+    "filters": {
+      "search": "Search",
+      "searchPlaceholder": "Name, tax ID, or email...",
+      "type": "Type",
+      "all": "All",
+      "clear": "Reset",
+      "reset": "Clear filters"
+    },
+    "form": {
+      "type": "Type",
+      "name": "Name",
+      "namePlaceholder": "Entity name",
+      "legalName": "Legal name",
+      "legalPlaceholder": "Full legal name",
+      "cif": "Tax ID",
+      "cifPlaceholder": "Entity tax ID",
+      "contactEmail": "Contact email",
+      "contactPlaceholder": "email@company.com",
+      "selectPlaceholder": "Select collaboration",
+      "add": "Add collaboration",
+      "update": "Update collaboration",
+      "cancelEdit": "Cancel edit"
+    },
+    "table": {
+      "type": "Type",
+      "name": "Name",
+      "legalName": "Legal name",
+      "cif": "Tax ID",
+      "contactEmail": "Email",
+      "actions": "Actions",
+      "edit": "Edit",
+      "delete": "Deactivate",
+      "empty": "No external collaborations registered yet."
+    },
+    "messages": {
+      "missingTitle": "Missing data",
+      "missingDesc": "Fill in name, legal name, tax ID, and email.",
+      "invalidEmailTitle": "Invalid email",
+      "invalidEmailDesc": "Enter a valid email address.",
+      "createTitle": "Collaboration created",
+      "updateTitle": "Collaboration updated",
+      "loadError": "Unable to load external collaborations."
+    }
+  },
+  "simulations": {
+    "header": {
+      "eyebrow": "Internal ERP",
+      "title": "Simulations",
+      "subtitle": "Set budgets and expenses to evaluate feasibility."
+    }
+  },
+  "timeReport": {
+    "header": {
+      "eyebrow": "Time report",
+      "title": "Analyze productivity by project and user",
+      "subtitle": "Filter by dates, projects, and users to make data-driven decisions."
+    },
+    "filters": {
+      "title": "Report filters",
+      "project": "Project",
+      "from": "From",
+      "to": "To",
+      "userContains": "User (contains)",
+      "userPlaceholder": "Ex: jmiralles, user@...",
+      "loadingProjects": "Loading projects...",
+      "allProjects": "All projects",
+      "submit": "Generate report",
+      "export": "Export CSV"
+    },
+    "stats": {
+      "totalHours": "Total hours",
+      "entries": "Entries found",
+      "status": "Status",
+      "statusReady": "Data ready",
+      "statusEmpty": "No data"
+    },
+    "table": {
+      "project": "Project",
+      "task": "Task",
+      "user": "User",
+      "rate": "Rate/hour",
+      "hours": "Hours",
+      "empty": "No data for the selected filters yet.",
+      "unassignedUser": "Unassigned user"
+    },
+    "export": {
+      "fileName": "time_report.csv"
+    },
+    "messages": {
+      "loadProjectsTitle": "Project load error",
+      "loadProjectsFallback": "Unable to load ERP projects.",
+      "reportErrorTitle": "Report error",
+      "reportErrorFallback": "Unable to generate the time report.",
+      "exportEmptyTitle": "No data to export",
+      "exportEmptyDesc": "Generate a report with results first."
+    }
+  },
+  "timeControl": {
+    "header": {
+      "eyebrow": "Time control",
+      "title": "Interactive calendar"
+    },
+    "stats": {
+      "totalWeeklyHours": "Total weekly hours"
+    },
+    "controls": {
+      "currentTask": "What are you working on?",
+      "selectTask": "Select a task",
+      "adjustment": "Step",
+      "prevWeek": "Previous week",
+      "today": "Today",
+      "nextWeek": "Next week"
+    },
+    "status": {
+      "inProgress": "In progress",
+      "idle": "No activity"
+    },
+    "views": {
+      "calendar": "Calendar",
+      "list": "List view",
+      "timesheet": "Timesheet"
+    },
+    "recent": {
+      "title": "Recent tasks",
+      "assigned": "Assigned to you",
+      "recent": "Recent",
+      "empty": "No recent tasks to show."
+    },
+    "calendar": {
+      "hour": "Hour"
+    },
+    "sessions": {
+      "loading": "Loading sessions...",
+      "empty": "No sessions logged."
+    },
+    "modal": {
+      "editTitle": "Edit session",
+      "createTitle": "Create session"
+    },
+    "fields": {
+      "task": "Task",
+      "description": "Description",
+      "optional": "Optional",
+      "start": "Start",
+      "end": "End"
+    },
+    "actions": {
+      "start": "Start",
+      "stop": "Stop",
+      "play": "Start",
+      "edit": "Edit",
+      "delete": "Deactivate",
+      "update": "Update",
+      "move": "Move",
+      "timeReport": "Time report"
+    },
+    "labels": {
+      "taskId": "Task #{{id}}",
+      "noTask": "No task"
+    },
+    "messages": {
+      "tasksLoadError": "Unable to load ERP tasks.",
+      "sessionsLoadError": "Unable to load sessions.",
+      "sessionUpdateErrorTitle": "Unable to update session",
+      "sessionCreateErrorTitle": "Unable to create session",
+      "sessionDeleteErrorTitle": "Unable to delete session",
+      "genericErrorFallback": "Check the data.",
+      "invalidTaskTitle": "Invalid task",
+      "invalidTaskDesc": "Select an ERP task.",
+      "trackingStartedTitle": "Tracking started",
+      "trackingStartedDesc": "Time session started for task {{taskId}}.",
+      "trackingStartErrorTitle": "Tracking start error",
+      "trackingStartErrorFallback": "Unable to start the time session.",
+      "sessionActiveTitle": "Active session already running",
+      "sessionActiveDesc": "Stop the current session before starting another.",
+      "trackingStopTitle": "Tracking stopped",
+      "trackingStopDesc": "Session ended. Duration: {{duration}}.",
+      "trackingStopErrorTitle": "Tracking stop error",
+      "trackingStopErrorFallback": "Unable to stop the active time session.",
+      "selectTask": "Select a task",
+      "selectRange": "Select a time range",
+      "sessionUpdated": "Session updated",
+      "sessionCreated": "Session created",
+      "sessionDeleted": "Session deleted"
+    }
+  },
+  "invitation": {
+    "title": "Accept invitation",
+    "subtitle": "Complete your details to activate your account.",
+    "loading": "Loading invitation details...",
+    "invalid": "The invitation is not valid (it may be expired or already used).",
+    "labels": {
+      "tenant": "Tenant:",
+      "email": "Invited email:",
+      "role": "Role:"
+    },
+    "fields": {
+      "fullName": "Full name",
+      "password": "Password",
+      "passwordConfirm": "Confirm password"
+    },
+    "actions": {
+      "createAccount": "Create account"
+    },
+    "messages": {
+      "passwordMissingTitle": "Missing data",
+      "passwordMissingDesc": "Fill in all password fields.",
+      "passwordMismatchTitle": "Password mismatch",
+      "passwordMismatchDesc": "The password and confirmation must match.",
+      "successTitle": "Account created",
+      "successDesc": "You can now sign in with your credentials.",
+      "errorTitle": "Invitation error",
+      "errorFallback": "Unable to complete the invitation."
+    }
+  },
+  "mfa": {
+    "title": "MFA verification",
+    "subtitle": "Enter the verification code sent to your email.",
+    "codeLabel": "MFA code",
+    "actions": {
+      "verify": "Verify"
+    },
+    "messages": {
+      "errorTitle": "MFA error",
+      "errorDesc": "Invalid or expired code"
+    }
+  },
+  "audit": {
+    "header": {
+      "eyebrow": "Administration",
+      "title": "Audit",
+      "subtitle": "Log of key actions and system events."
+    },
+    "description": "Audit trail of relevant actions for this tenant.",
+    "filters": {
+      "tenant": "Tenant",
+      "source": "Source",
+      "user": "User",
+      "userPlaceholder": "email@company.com",
+      "from": "From",
+      "to": "To",
+      "apply": "Apply filters",
+      "clear": "Clear",
+      "all": "All"
+    },
+    "sources": {
+      "web": "Web",
+      "app": "App"
+    },
+    "loading": "Loading audit records...",
+    "error": "Unable to load audit records (check permissions and connection).",
+    "table": {
+      "date": "Date",
+      "user": "User",
+      "source": "Source",
+      "action": "Action",
+      "details": "Details",
+      "empty": "No audit records to show yet."
+    }
+  },
+  "audit_actions": {
+    "login": "User login",
+    "login.mfa_request": "MFA request",
+    "mfa.verify": "MFA verification",
+    "user.change_password": "Password change",
+    "user.list": "List users",
+    "user.update_me": "Profile update",
+    "user.create": "User creation",
+    "user.delete": "User deletion",
+    "user.status_update": "User status update",
+    "tool.list": "List tools",
+    "tool.launch": "Tool launch",
+    "tool.configure": "Tool configuration",
+    "ticket.create": "Ticket creation",
+    "ticket.comment": "New comment on ticket",
+    "ticket.comment_internal": "New internal note on ticket",
+    "ticket.update": "Ticket update",
+    "ticket.close": "Ticket closed",
+    "ticket.reopen": "Ticket reopened",
+    "ticket.assign": "Ticket assignment",
+    "tenant.list": "List tenants",
+    "tenant.create": "Tenant creation",
+    "tenant.update": "Tenant update",
+    "tenant.delete": "Tenant deletion",
+    "user.invitation.create": "Invitation creation",
+    "user.invitation.accept": "Invitation accepted",
+    "hr.department.create": "Department creation",
+    "hr.department.update": "Department update",
+    "hr.employee.create": "Employee creation",
+    "hr.employee.update": "Employee update",
+    "hr.employee.delete": "Employee deletion"
+  },
+  "audit_details": {
+    "login": "Login without MFA (SUPER_ADMIN)",
+    "login.mfa_request": "An MFA code has been sent by email",
+    "mfa.verify": "Successful login with email MFA",
+    "user.change_password": "User changed their own password",
+    "user.update_me": "User updated their own profile"
+  },
+  "toolsAdmin": {
+    "header": {
+      "eyebrow": "Administration",
+      "title": "Tools",
+      "subtitle": "Enable or disable modules per tenant."
+    },
+    "filters": {
+      "tenant": "Tenant",
+      "loadingTenants": "Loading tenants...",
+      "selectTenant": "Select a tenant",
+      "loadTenantsError": "Unable to load tenants (check permissions and token)."
+    },
+    "description": "Configuration of external tools (Moodle, ERP, BI, etc.) enabled for this tenant.",
+    "loading": "Loading tools...",
+    "catalog": {
+      "fallbackDescription": "Tool integrated into the platform.",
+      "enabled": "Enabled for tenant",
+      "disabled": "Not enabled"
+    },
+    "actions": {
+      "enable": "Enable",
+      "disable": "Disable"
+    },
+    "messages": {
+      "updateSuccessTitle": "Tool updated",
+      "updateSuccessDesc": "The tool status was updated successfully.",
+      "updateErrorTitle": "Tool update error",
+      "updateErrorFallback": "Unable to update the tool (check permissions and data)."
+    }
+  },
+  "tenantSettings": {
+    "header": {
+      "eyebrow": "Administration",
+      "title": "Tenant settings",
+      "subtitle": "Configure companies and administrators."
+    },
+    "permissions": {
+      "onlySuperAdmin": "Only the global Super Admin can view and manage the full tenant list."
+    },
+    "description": "General configuration of companies/tenants within the platform. Creating a tenant sends an invitation to the primary admin.",
+    "fields": {
+      "name": "Tenant name",
+      "subdomain": "Subdomain",
+      "active": "Active",
+      "adminEmail": "Tenant admin email"
+    },
+    "placeholders": {
+      "name": "Company name",
+      "subdomain": "acme, company, etc.",
+      "adminEmail": "admin@company.com"
+    },
+    "actions": {
+      "create": "Create tenant and invite admin",
+      "edit": "Edit",
+      "save": "Save changes",
+      "delete": "Deactivate"
+    },
+    "list": {
+      "title": "Existing tenants",
+      "loading": "Loading tenants...",
+      "error": "Unable to load tenants (check permissions and token).",
+      "name": "Name",
+      "subdomain": "Subdomain",
+      "active": "Active",
+      "createdAt": "Created at",
+      "yes": "Yes",
+      "no": "No"
+    },
+    "messages": {
+      "createSuccessTitle": "Tenant created",
+      "createSuccessDesc": "The tenant was created and the admin invitation was sent.",
+      "createErrorTitle": "Tenant creation error",
+      "createErrorFallback": "Unable to create the tenant or send the invitation (check permissions and data).",
+      "updateSuccessTitle": "Tenant updated",
+      "updateSuccessDesc": "The tenant was updated successfully.",
+      "updateErrorTitle": "Tenant update error",
+      "updateErrorFallback": "Unable to update the tenant (check permissions and data).",
+      "deleteSuccessTitle": "Tenant deactivated",
+      "deleteSuccessDesc": "The tenant was deleted successfully.",
+      "deleteErrorTitle": "Tenant delete error",
+      "deleteErrorFallback": "Unable to deactivate the tenant (check permissions and data)."
+    }
+  },
+  "branding": {
+    "header": {
+      "eyebrow": "Administration",
+      "title": "Brand settings",
+      "subtitle": "Configure the tenant logo and accent color."
+    },
+    "fields": {
+      "tenant": "Tenant",
+      "selectTenant": "Select a tenant",
+      "loadingTenants": "Loading tenants...",
+      "logo": "Logo",
+      "noLogo": "No logo uploaded",
+      "companyName": "Company name",
+      "companySubtitle": "Subtitle",
+      "companyNameEnabled": "Show title",
+      "companySubtitleEnabled": "Show subtitle",
+      "accentColor": "Accent color",
+      "palette": "Generated palette"
+    },
+    "departmentEmails": {
+      "title": "Department emails",
+      "subtitle": "Set the contact email for each department.",
+      "add": "Add email",
+      "remove": "Remove",
+      "empty": "No departments configured yet.",
+      "department": "Department",
+      "email": "Email"
+    },
+    "actions": {
+      "save": "Save changes"
+    },
+    "messages": {
+      "loading": "Loading branding...",
+      "loadError": "Unable to load branding.",
+      "selectTenant": "Select a tenant to manage branding.",
+      "loadTenantsError": "Unable to load tenants.",
+      "updateSuccessTitle": "Branding updated",
+      "updateSuccessDesc": "Brand settings saved successfully.",
+      "updateErrorTitle": "Branding update error",
+      "updateErrorFallback": "Unable to update branding."
+    }
+  },
+  "support": {
+    "header": {
+      "eyebrow": "Support",
+      "title": "Support tickets",
+      "subtitle": "Track incidents, respond, and keep tenants updated."
+    },
+    "description": "Manage platform incidents by tenant. Tickets are ordered by the latest activity.",
+    "filters": {
+      "title": "Filters",
+      "tenant": "Tenant",
+      "loadingTenants": "Loading tenants...",
+      "allTenants": "All tenants",
+      "status": "Status",
+      "priority": "Priority",
+      "mineOnly": "Mine only",
+      "all": "All"
+    },
+    "table": {
+      "tenant": "Tenant",
+      "subject": "Subject",
+      "status": "Status",
+      "priority": "Priority",
+      "lastActivity": "Last activity",
+      "loading": "Loading tickets...",
+      "loadError": "Unable to load tickets (check permissions and connection).",
+      "empty": "No tickets for the selected filters yet."
+    },
+    "status": {
+      "open": "Open",
+      "inProgress": "In progress",
+      "resolved": "Resolved",
+      "closed": "Closed"
+    },
+    "priority": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "critical": "Critical"
+    },
+    "create": {
+      "title": "Create ticket",
+      "subject": "Subject",
+      "subjectPlaceholder": "Brief summary",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Describe what happened, steps to reproduce, etc.",
+      "toolOptional": "Tool (optional)",
+      "toolPlaceholder": "ex: erp, moodle",
+      "submit": "Create ticket"
+    },
+    "detail": {
+      "title": "Detail and conversation",
+      "selectPrompt": "Select a ticket to view the details.",
+      "statusLabel": "Status:",
+      "priorityLabel": "Priority:",
+      "createdBy": "Created by {{email}}.",
+      "assignedTo": "Assigned to",
+      "unassigned": "Unassigned",
+      "createdAt": "Created at: {{date}}",
+      "lastActivity": "Last activity: {{date}}",
+      "firstResponse": "First response: {{date}}",
+      "resolvedAt": "Resolved at: {{date}}",
+      "closedAt": "Closed at: {{date}}"
+    },
+    "assign": {
+      "label": "Assign to",
+      "placeholder": "Select a user",
+      "inactive": "inactive",
+      "submit": "Assign"
+    },
+    "actions": {
+      "reopen": "Reopen",
+      "close": "Close"
+    },
+    "reply": {
+      "title": "Reply",
+      "placeholder": "Write a response",
+      "internalLabel": "Internal note",
+      "send": "Send reply"
+    },
+    "messages": {
+      "createSuccessTitle": "Ticket created",
+      "createSuccessDesc": "Your ticket was created successfully.",
+      "createErrorTitle": "Ticket creation error",
+      "createErrorFallback": "Unable to create the ticket.",
+      "replyErrorTitle": "Reply error",
+      "replyErrorFallback": "Unable to send the reply.",
+      "closeSuccessTitle": "Ticket closed",
+      "closeErrorTitle": "Close error",
+      "closeErrorFallback": "Unable to close the ticket.",
+      "reopenSuccessTitle": "Ticket reopened",
+      "reopenErrorTitle": "Reopen error",
+      "reopenErrorFallback": "Unable to reopen the ticket.",
+      "assignSuccessTitle": "Ticket assigned",
+      "assignErrorTitle": "Assign error",
+      "assignErrorFallback": "Unable to assign the ticket.",
+      "missingDataTitle": "Missing data",
+      "missingDataDesc": "Subject and description are required.",
+      "emptyMessageTitle": "Empty message",
+      "emptyMessageDesc": "Write a message before sending.",
+      "loadingConversation": "Loading conversation...",
+      "loadMessagesError": "Unable to load messages (check permissions and connection).",
+      "emptyMessages": "No messages yet for this ticket.",
+      "internalNote": "Internal note"
+    }
+  },
+  "users": {
+    "header": {
+      "eyebrow": "Users",
+      "title": "Manage tenant access",
+      "subtitle": "Invite users, manage roles, and activate or deactivate accounts."
+    },
+    "tenant": {
+      "label": "Tenant",
+      "loading": "Loading tenants...",
+      "placeholder": "Select a tenant"
+    },
+    "invite": {
+      "title": "Invite user by email",
+      "fullName": "Full name",
+      "fullNamePlaceholder": "First and last name",
+      "email": "Email",
+      "emailPlaceholder": "user@company.com",
+      "role": "Role",
+      "submit": "Send invite"
+    },
+    "filters": {
+      "search": "Search",
+      "searchPlaceholder": "Name or email",
+      "role": "Role",
+      "status": "Status",
+      "all": "All",
+      "activeOnly": "Active only",
+      "inactiveOnly": "Inactive only"
+    },
+    "table": {
+      "name": "Name",
+      "email": "Email",
+      "role": "Role",
+      "status": "Status",
+      "empty": "No users match the filters.",
+      "active": "Active",
+      "inactive": "Inactive",
+      "edit": "Edit",
+      "delete": "Deactivate"
+    },
+    "edit": {
+      "title": "Edit user",
+      "fullName": "Full name",
+      "email": "Email",
+      "role": "Role",
+      "save": "Save changes"
+    },
+    "roles": {
+      "superAdmin": "Super admin",
+      "tenantAdmin": "Tenant admin",
+      "standard": "Standard user"
+    },
+    "list": {
+      "loading": "Loading users...",
+      "loadError": "Unable to load users (check permissions and token)."
+    },
+    "messages": {
+      "inviteSuccessTitle": "Invitation sent",
+      "inviteSuccessDesc": "An invitation email was sent to the user to complete onboarding.",
+      "inviteErrorTitle": "Invitation error",
+      "inviteErrorFallback": "Unable to send the invitation (check permissions and data).",
+      "updateSuccessTitle": "User updated",
+      "updateSuccessDesc": "The user was updated successfully.",
+      "updateErrorTitle": "Update user error",
+      "updateErrorFallback": "Unable to update the user (check permissions and data).",
+      "deleteSuccessTitle": "User deleted",
+      "deleteSuccessDesc": "The user was deleted successfully.",
+      "deleteErrorTitle": "Delete user error",
+      "deleteErrorFallback": "Unable to delete the user (check permissions and data).",
+      "statusErrorTitle": "Status update error",
+      "statusErrorFallback": "Unable to update the user status."
+    }
+  },
+  "hr": {
+    "header": {
+      "eyebrow": "Human resources",
+      "title": "Manage teams and structure",
+      "subtitle": "Track departments, profiles, and costs from one panel."
+    },
+    "talent": {
+      "title": "Talent"
+    },
+    "tenant": {
+      "label": "Tenant",
+      "loading": "Loading tenants...",
+      "loadError": "Unable to load tenants.",
+      "placeholder": "Select a tenant"
+    },
+    "emptyTenant": "Select a tenant to manage HR data.",
+    "departments": {
+      "title": "Departments",
+      "form": {
+        "name": "Name",
+        "description": "Description",
+        "allocation": "Available hours %",
+        "createTitle": "Create department",
+        "editTitle": "Edit department",
+        "save": "Save",
+        "create": "Create department"
+      },
+      "loading": "Loading departments...",
+      "error": "Unable to load departments (check permissions).",
+      "table": {
+        "name": "Name",
+        "description": "Description",
+        "allocation": "Hours %",
+        "status": "Status",
+        "actions": "Actions",
+        "edit": "Edit",
+        "delete": "Deactivate",
+        "empty": "No departments created yet."
+      }
+    },
+    "positions": {
+      "title": "Positions",
+      "description": "Create and manage the job positions available for your employees.",
+      "form": {
+        "name": "Name",
+        "namePlaceholder": "E.g. Site manager",
+        "department": "Department",
+        "departmentPlaceholder": "No department",
+        "level": "Level",
+        "isActive": "Active",
+        "permissions": "Position permissions",
+        "canUploadComparative": "Upload comparatives",
+        "canApproveComparative": "Approve comparatives",
+        "canApproveContract": "Approve contracts",
+        "canManageObra": "Manage works",
+        "canAdminSettings": "Manage settings",
+        "createTitle": "Create position",
+        "editTitle": "Edit position",
+        "create": "Create position",
+        "save": "Save"
+      },
+      "loading": "Loading positions...",
+      "error": "Could not load positions (check permissions).",
+      "filters": {
+        "search": "Search",
+        "searchPlaceholder": "Search position"
+      },
+      "table": {
+        "name": "Name",
+        "department": "Department",
+        "level": "Level",
+        "status": "Status",
+        "actions": "Actions",
+        "empty": "No positions created yet.",
+        "noDepartment": "—"
+      },
+      "emptyDescription": "Create your first position to assign roles to employees.",
+      "messages": {
+        "created": "Position created",
+        "updated": "Position updated",
+        "deleted": "Position deleted",
+        "createError": "Could not create position",
+        "updateError": "Could not update position",
+        "deleteError": "Could not delete position"
+      },
+      "delete": {
+        "title": "Delete position",
+        "body": "This will deactivate the position. Continue?",
+        "cancel": "Cancel",
+        "confirm": "Delete"
+      }
+    },
+    "employees": {
+      "title": "Employees",
+      "form": {
+        "userOptional": "User (optional)",
+        "loadingUsers": "Loading users...",
+        "userPlaceholder": "No linked user",
+        "noEmail": "no email",
+        "fullName": "Full name",
+        "position": "Position",
+        "titulacion": "Degree",
+        "titulacionPlaceholder": "Select degree",
+        "hourlyRate": "Hourly rate",
+        "hourlyRatePlaceholder": "Ex: 35.5",
+        "primaryDepartment": "Primary department",
+        "departmentPlaceholder": "Select department",
+        "create": "Create employee"
+      },
+      "loading": "Loading employees...",
+      "error": "Unable to load employees (check permissions).",
+      "table": {
+        "employee": "Employee",
+        "email": "Email",
+        "hourlyRate": "Rate/hour",
+        "position": "Position",
+        "department": "Department",
+        "status": "Status",
+        "actions": "Actions",
+        "empty": "No employees registered yet.",
+        "noName": "No name",
+        "edit": "Edit"
+      }
+    },
+    "headcount": {
+      "title": "Headcount by department",
+      "loading": "Loading report...",
+      "table": {
+        "department": "Department",
+        "activeEmployees": "Active employees",
+        "empty": "No headcount data for this tenant yet."
+      },
+      "totalActive": "Total active employees: {{total}}"
+    },
+    "modal": {
+      "title": "Edit employee",
+      "fullName": "Full name",
+      "email": "Email",
+      "position": "Position",
+      "titulacion": "Degree",
+      "hourlyRate": "Hourly rate",
+      "primaryDepartment": "Primary department",
+      "departmentPlaceholder": "Select department",
+      "status": "Status",
+      "statusActive": "Active",
+      "statusInactive": "Inactive",
+      "cancel": "Cancel",
+      "delete": "Deactivate",
+      "save": "Save changes"
+    },
+    "alert": {
+      "title": "Delete employee",
+      "body": "This action cannot be undone. Do you want to continue?",
+      "cancel": "Cancel",
+      "confirm": "Delete"
+    },
+    "messages": {
+      "departmentCreated": "Department created",
+      "departmentCreateErrorTitle": "Department creation error",
+      "employeeCreated": "Employee created",
+      "employeeCreateErrorTitle": "Employee creation error",
+      "employeeCreateErrorDesc": "Check permissions, user, and department.",
+      "employeeUpdated": "Employee updated",
+      "employeeUpdateErrorTitle": "Employee update error",
+      "employeeDeleted": "Employee deleted",
+      "employeeDeleteErrorTitle": "Employee delete error",
+      "departmentRequired": "Department required",
+      "nameRequired": "Name required",
+      "employeeNameRequiredDesc": "Provide the full name if no user is selected.",
+      "selectTenant": "Select a tenant",
+      "genericErrorDesc": "Check permissions and data.",
+      "titulacionRequired": "Select a degree"
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    }
+  },
+  "erp": {
+    "projectDetail": {
+      "title": "Project details",
+      "code": "Project #{{id}}",
+      "noId": "no id"
+    },
+    "projects": {
+      "header": {
+        "eyebrow": "Internal ERP",
+        "title": "Projects and delivery",
+        "subtitle": "Manage projects, activities, milestones, and delivery tracking."
+      },
+      "stats": {
+        "activeProjects": "Active projects",
+        "totalTasks": "Total tasks",
+        "assignedTasks": "Assigned tasks"
+      },
+      "cards": {
+        "projectsEyebrow": "Projects",
+        "projectsTitle": "Project portfolio",
+        "projectsDesc": "Review active projects and their status.",
+        "tasksEyebrow": "Tasks",
+        "tasksTitle": "Task tracking",
+        "tasksDesc": "Monitor team tasks and progress.",
+        "timeReportEyebrow": "Analytics",
+        "timeReportTitle": "Time report",
+        "timeReportDesc": "Analyze logged hours by project and user."
+      },
+      "tabs": {
+        "summary": "Summary",
+        "projects": "Projects",
+        "workManagement": "Work management",
+        "create": "Create",
+        "gantt": "Gantt"
+      },
+      "list": {
+        "loading": "Loading projects...",
+        "error": "Unable to load projects.",
+        "noStart": "No start",
+        "noEnd": "No end",
+        "to": "to"
+      },
+      "create": {
+        "title": "Create project",
+        "helper": "Define the project details before adding activities and milestones.",
+        "general": "General",
+        "dates": "Dates"
+      },
+      "fields": {
+        "name": "Name",
+        "projectName": "Project name",
+        "description": "Description",
+        "start": "Start",
+        "end": "End",
+        "weight": "Weight (%)"
+      },
+      "defaults": {
+        "activity": "Activity {{index}}",
+        "subactivity": "Subactivity {{index}}",
+        "milestone": "Milestone {{index}}"
+      },
+      "activities": {
+        "title": "Activities",
+        "weightSum": "Weight sum: {{weight}}% (target 100%)",
+        "itemLabel": "Activity #{{index}}",
+        "addSubactivity": "+ Add subactivity",
+        "emptySubactivities": "No subactivities yet.",
+        "subactivityLabel": "Subactivity #{{index}}",
+        "subactivityWeightSum": "Subactivity sum: {{weight}}% (target {{target}}%)",
+        "taskCatalog": "Catalog tasks",
+        "taskCatalogPlaceholder": "Select a task",
+        "addTask": "Add task",
+        "addManualTask": "+ Manual task",
+        "emptyTasks": "No tasks added yet.",
+        "taskTitlePlaceholder": "Task title",
+        "removeTask": "Remove",
+        "removeSubactivity": "Remove subactivity",
+        "removeActivity": "Remove activity"
+      },
+      "milestones": {
+        "title": "Milestones and deliverables",
+        "itemLabel": "Milestone #{{index}}",
+        "nameLabel": "Milestone name",
+        "dueDate": "Due date",
+        "allowLate": "Allow late submission",
+        "deliverables": "Deliverables",
+        "emptyDeliverables": "No deliverables yet.",
+        "deliverableTitle": "Title",
+        "type": "Type",
+        "typeLink": "Link",
+        "typeText": "Text",
+        "value": "Value",
+        "addDeliverable": "+ Add deliverable",
+        "removeDeliverable": "Remove deliverable",
+        "removeMilestone": "Remove milestone"
+      },
+      "validation": {
+        "nameRequired": "Name is required",
+        "activityWeightsTitle": "Activity weights incomplete",
+        "activityWeightsDesc": "Activities must add up to 100% (current {{weight}}%).",
+        "subactivityWeightsTitle": "Subactivity weights incomplete",
+        "subactivityWeightsDesc": "Activity \"{{activity}}\" must add to {{activityWeight}}% (current {{subWeight}}%)."
+      },
+      "messages": {
+        "saveSuccess": "Project saved",
+        "saveErrorTitle": "Unable to save project",
+        "saveErrorFallback": "Check the data."
+      },
+      "gantt": {
+        "title": "Gantt",
+        "subtitle": "Track projects and tasks on the timeline.",
+        "week": "Week",
+        "month": "Month",
+        "empty": "No tasks scheduled yet.",
+        "headers": {
+          "name": "Name",
+          "start": "From",
+          "end": "To"
+        }
+      },
+      "permissions": {
+        "noCreate": "You do not have permissions to create projects."
+      },
+      "actions": {
+        "saveProject": "Save project"
+      }
+    },
+    "tasks": {
+      "header": {
+        "eyebrow": "Internal ERP",
+        "title": "Team tasks and tracking",
+        "subtitle": "Organize daily work, shift priorities, and track progress live."
+      },
+      "tabs": {
+        "summary": "Summary",
+        "kanban": "Kanban"
+      },
+      "create": {
+        "title": "Create task"
+      },
+      "fields": {
+        "title": "Task title",
+        "titlePlaceholder": "Write the title",
+        "description": "Description",
+        "start": "Start",
+        "end": "End",
+        "project": "Project",
+        "assignee": "Assign to",
+        "noProject": "No project",
+        "selectUser": "Select user",
+        "tenantUsers": "Tenant users",
+        "status": "Status",
+        "statusLabel": "Status: {{status}}"
+      },
+      "status": {
+        "pending": "Pending",
+        "inProgress": "In progress",
+        "inProgressShort": "In progress",
+        "done": "Done",
+        "doneShort": "Completed"
+      },
+      "actions": {
+        "create": "Create task",
+        "toggleCreate": "Create task",
+        "hideForm": "Hide form",
+        "addQuick": "+ Add task",
+        "edit": "Edit",
+        "saveChanges": "Save changes"
+      },
+      "summary": {
+        "allTasks": "All tasks",
+        "assigned": "My assigned tasks",
+        "emptyAll": "No tasks registered yet.",
+        "emptyAssigned": "You have no assigned tasks right now.",
+        "projectLabel": "Project: {{project}}",
+        "noProject": "No project"
+      },
+      "kanban": {
+        "title": "Tasks",
+        "subtitle": "Drag cards to update their status instantly.",
+        "empty": "No tasks",
+        "projectLabel": "In {{project}}",
+        "projectFallback": "Project",
+        "noProject": "No project"
+      },
+      "messages": {
+        "createSuccess": "Task created",
+        "createErrorTitle": "Unable to create task",
+        "createErrorFallback": "Check the data.",
+        "moveErrorTitle": "Unable to move task",
+        "moveErrorFallback": "Check permissions and data.",
+        "updateSuccess": "Task updated",
+        "updateErrorTitle": "Unable to update task",
+        "updateErrorFallback": "Check the data.",
+        "titleRequired": "Title is required"
+      },
+      "drawer": {
+        "title": "Task detail",
+        "projectLabel": "Project: {{project}}",
+        "projectFallback": "No name",
+        "noProject": "No project",
+        "assigned": "Assigned",
+        "unassigned": "Unassigned",
+        "noDate": "No date",
+        "noDescription": "No description"
+      }
+    }
+  },
+  "agent": {
+    "title": "Agent",
+    "subtitle": "Side assistant",
+    "openPanel": "Open agent",
+    "closePanel": "Close agent panel"
+  },
+  "topbar": {
+    "lightMode": "Light mode",
+    "darkMode": "Dark mode",
+    "notifications": "Notifications",
+    "noNotifications": "No notifications",
+    "userSettings": "User settings",
+    "logout": "Log out"
+  },
+  "appShell": {
+    "sessionError": "Could not validate your session. Please try again in a moment."
+  }
+}

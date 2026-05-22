@@ -1,0 +1,13 @@
+{
+  "name": "plataforma-urdecon",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "guard:root-node-boundary": "node scripts/validate-root-package.cjs",
+    "frontend:dev": "npm --prefix frontend-react run dev",
+    "frontend:build": "npm --prefix frontend-react run build",
+    "frontend:preview": "npm --prefix frontend-react run preview",
+    "frontend:lint": "npm --prefix frontend-react run lint",
+    "frontend:test": "npm --prefix frontend-react run test"
+  }
+}

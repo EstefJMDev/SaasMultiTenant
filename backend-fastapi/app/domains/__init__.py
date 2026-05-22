@@ -1,0 +1,3 @@
+"""
+Bounded contexts de negocio.
+"""

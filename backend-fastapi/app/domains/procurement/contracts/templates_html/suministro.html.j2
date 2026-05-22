@@ -1,0 +1,209 @@
+{#
+  CONTRATO DE SUMINISTRO DE MATERIALES — Plantilla HTML/Jinja2 para WeasyPrint.
+
+  Variables consumidas (todas string, ya formateadas por _build_substitution_context):
+    Datos URDECON (constructor): fijos en la plantilla.
+    Proveedor: RAZON_SOCIAL, CIF, DIRECCION_EMPRESA, NOMBRE_GERENTE, NIF_GERENTE
+    Obra: NOMBRE_OBRA, NUM_OBRA, PROMOTORA, DURACION_OBRA, HITOS (separados por \n)
+    Económicos: FORMA_PAGO, PORTES, DESCARGAS, TERMINO_PAGO
+    Fechas: FECHA_INICIO, FECHA_FIN, DIA, MES, ANIO
+#}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Contrato de Suministro {{ NUM_OBRA or '' }}</title>
+  <link rel="stylesheet" href="base.css">
+</head>
+<body>
+
+<div class="page-header">
+  <img src="assets/logo-urdecon.svg" alt="URDECON">
+</div>
+
+{# ──────────────────── CONDICIONES PARTICULARES ──────────────────── #}
+
+<h1>CONTRATO DE SUMINISTRO DE MATERIALES</h1>
+<h2 class="subtitle">Condiciones Particulares</h2>
+
+<p class="date-line">En Murcia, a {{ DIA or '___' }} de {{ MES or '________' }} de {{ ANIO or '____' }}</p>
+
+<h2 class="section">Reunidos</h2>
+
+<p>D. Enrique Fernández-Delgado Gavilá, con D.N.I. 34828322-C con domicilio en Puente Tocinos, C/ Mayor, 55 – Pol. Ind. Camposol.</p>
+
+<p>Y D. {{ NOMBRE_GERENTE or '' }}, con D.N.I. {{ NIF_GERENTE or '' }}, con domicilio en {{ DIRECCION_EMPRESA or '' }}.</p>
+
+<h2 class="section">Intervienen</h2>
+
+<p>D. Enrique Fernández-Delgado Gavilá, en nombre y representación de CONSTRUCCIONES URDECON, S.A. con domicilio en Puente Tocinos (Murcia), C/ Mayor, 55 – Polígono Industrial Camposol y C.I.F. A-30032205.</p>
+
+<p>Y D. {{ NOMBRE_GERENTE or '' }}, en nombre y representación de {{ RAZON_SOCIAL or '' }}, con domicilio {{ DIRECCION_EMPRESA or '' }} y C.I.F. {{ CIF or '' }}, en adelante el suministrador.</p>
+
+<p>Ambas partes, se reconocen capacidad legal para la celebración del presente subcontrato de suministro de materiales, y</p>
+
+<h2 class="section">Exponen</h2>
+
+<p>Que CONSTRUCCIONES URDECON, S.A. es adjudicataria de las obras para realización de {{ NOMBRE_OBRA or '' }}, (Expediente {{ NUM_OBRA or '' }}) promovidas por {{ PROMOTORA or '' }}, para las que se contrata el suministro de los materiales siendo la fecha de inicio {{ FECHA_INICIO or '' }} y fecha fin {{ FECHA_FIN or '' }}.</p>
+
+<p><span class="section-label">OBJETO DEL SUBCONTRATO.</span> -El contrato tiene por objeto el suministro para el CONSTRUCTOR por parte del PROVEEDOR de los materiales que se especifican en el siguiente cuadro:</p>
+
+{% if LINEAS %}
+<table class="materials-table">
+  <thead>
+    <tr>
+      <th class="col-med">MED.</th>
+      <th class="col-uds">UDS.</th>
+      <th class="col-desc">DESCRIPCIÓN</th>
+      <th class="col-num">PRECIO</th>
+      <th class="col-num">IMPORTE</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for fila in LINEAS %}
+    <tr>
+      <td class="col-med">{{ fila.med }}</td>
+      <td class="col-uds">{{ fila.uds }}</td>
+      <td class="col-desc">{{ fila.descripcion }}</td>
+      <td class="col-num">{{ fila.precio }}</td>
+      <td class="col-num">{{ fila.importe }}</td>
+    </tr>
+    {% endfor %}
+    {% if TOTAL_LINEAS %}
+    <tr class="total-row">
+      <td colspan="4" class="text-right bold">TOTAL</td>
+      <td class="col-num bold">{{ TOTAL_LINEAS }}</td>
+    </tr>
+    {% endif %}
+  </tbody>
+</table>
+{% else %}
+<div class="materials-box"></div>
+{% endif %}
+
+<p><strong>Se facturará lo realmente suministrado en obra</strong></p>
+
+<p><strong>PLAZO de entrega: {{ DURACION_OBRA or '' }}</strong></p>
+
+{% if HITOS %}
+<div class="milestones">
+{% for line in HITOS.split('\n') %}
+  {% if line.strip() %}<div class="milestone-item">{{ line }}</div>{% endif %}
+{% endfor %}
+</div>
+{% endif %}
+
+<p><strong>FORMA DE PAGO será mediante {{ FORMA_PAGO or '' }} dentro del periodo legal establecido de pago.</strong></p>
+
+<p><strong>PORTES Y DESCARGAS</strong></p>
+<p>Los portes irán a cargo de {{ PORTES or '' }}</p>
+<p>Las descargas irán a cargo de {{ DESCARGAS or '' }}.</p>
+
+<div class="signatures">
+  <div class="signatures-row">
+    <div class="signature-cell">
+      <div class="signature-role">El Contratista</div>
+      <div class="signature-company">CONSTRUCCIONES URDECON, S.A.</div>
+      <div class="signature-fdo">Fdo.: Enrique Fernández-Delgado Gavilá</div>
+    </div>
+    <div class="signature-cell">
+      <div class="signature-role">El Suministrador</div>
+      <div class="signature-company">{{ RAZON_SOCIAL or '' }}</div>
+      <div class="signature-fdo">Fdo.: {{ NOMBRE_GERENTE or '' }}</div>
+    </div>
+  </div>
+</div>
+
+{# ──────────────────── CONDICIONES GENERALES ──────────────────── #}
+
+<div class="page-break"></div>
+
+<h1>CONTRATO DE SUMINISTRO DE MATERIALES</h1>
+<h2 class="subtitle">Condiciones Generales</h2>
+
+<div class="clause">
+  <p><span class="clause-title">1.- OBJETO DEL CONTRATO.</span> - El contrato tiene por objeto el suministro para el CONSTRUCTOR por parte del PROVEEDOR de los materiales que se especifican en las condiciones particulares.</p>
+  <p>Todos los materiales a que se refiere este contrato, deberán reunir las cualidades prescritas en el Pliego de Condiciones Técnicas y en caso de no estar definidas en éste, cumplirán las condiciones recogidas en las normas de edificación vigentes en el momento de la firma del presente contrato.</p>
+  <p>Las partes acuerdan expresamente que el presente contrato constituye el acuerdo total y definitivo entre ellas en relación con el objeto del mismo y las obras a las que el mismo se refiere, y deja sin efecto alguno y sustituye cualquier propuesta, oferta, presupuesto, comunicación o acuerdo previo, ya sea verbal o escrito, que haya sido intercambiado con anterioridad a la firma del presente. Ninguna de las partes podrá alegar la existencia de compromisos o condiciones distintas a las aquí recogidas, rigiéndose en todo lo relativo a estas obras por lo establecido en este contrato y quedando sin efecto de ninguna clase entre ellas cualquier documento anterior.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">2.- PLAZO.</span> - El suministro del material al que se refiere el presente contrato deberá ser entregado a pie de tajo según planificación acordada con el Jefe de Obra y previo aviso de las personas autorizadas. La fecha de inicio del suministro es la establecida en las condiciones particulares de este contrato, así como el tiempo que dispone el proveedor de producción para suministrar al aviso de la persona autorizada por la Contratista.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">3.- PRECIO.</span> - Los precios convenidos para el suministro de materiales al que se refiere el presente contrato serán los reflejados en las condiciones particulares. Estos precios son fijos y no están sujetos a revisión alguna y llevan incluidos todos los cargos, impuestos (excepto el IVA), el embalaje habitual, así como los intereses y coste por aplazamiento en el pago convenido, conforme a lo establecido en la legislación vigente. Las cantidades a suministrar recogidas en este Contrato son aproximadas y a título informativo. El proveedor, se obliga a suministrar en mayor o menor medida las necesidades reales de la obra, en las mismas condiciones que las iniciales. Los portes y descarga a pie de obra será determinado en las condiciones particulares.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">4.- RECEPCIÓN.</span> - Los artículos suministrados que incumplan las Especificaciones de Compra adjuntas o los criterios de la Dirección de Obra, quedarán a cuenta y riesgo del Proveedor en el mismo lugar donde hubieran sido depositados. Toda entrega o servicio, total o parcial, deberá acompañarse de su correspondiente albarán reflejando: la fecha, el nº de contrato/pedido, cantidad y detalle de artículos suministrados, así como cualquier otra información expresada en las especificaciones de compra. La firma del albarán no implica la aceptación de la calidad del artículo. Hasta que se haga entrega a CONSTRUCCIONES URDECON, S.A. por parte del PROVEEDOR, de los documentos que se indiquen o aquellos otros que sean necesarios para poder utilizar los artículos solicitados, no se considerarán recibidos los mismos.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">5.- PÉRDIDA Y RESPONSABILIDAD.</span> - El PROVEEDOR asume el riesgo de la pérdida del producto hasta su efectiva descarga a pie de obra, siendo de su cuenta, los riesgos de la descarga si la misma es por cuenta del proveedor. El PROVEEDOR deberá realizar la entrega conforme a las especificaciones de compra, asumiendo la responsabilidad de origen, identidad, y calidad del producto, del cumplimiento de la normativa técnica aplicable, aun cuando no se especifique expresamente en las Especificaciones de Compra y facilitar la documentación, instrucciones de uso y mantenimiento de los productos y garantías de calidad, en su condicione de suministrador conforme al art. 15 de la Ley 38/1999 de 5 de noviembre de Ordenación de la Edificación.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">6.-FORMA DE PAGO.</span> – La forma de pago será pagare o confirming con fecha emisión dentro del periodo legal establecido de pago de {{ TERMINO_PAGO or '' }} desde la fecha de recepción de la factura en el departamento de contabilidad, cuyo correo es <a href="mailto:facturas@urdecon.es">facturas@urdecon.es</a>, más los necesarios para hacerlos coincidir con los días 22 inmediato posterior del mes correspondiente, siempre que el responsable de la obra haya dado su conformidad. Además de la factura deberá presentarse la documentación solicitada, requisitos ambos imprescindibles a efectos del cálculo del cómputo de días para el vencimiento. Los precios convenidos llevan incluidos los intereses y el coste por aplazamiento en el pago convenido, conforme a lo establecido en la legislación vigente.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">7.- GARANTIAS.</span> - En su calidad de agente de la construcción, el PROVEEDOR responderá frente a CONSTRUCCIONES URDECON, S.A. por los defectos de los elementos suministrados durante el periodo de un año desde la puesta en funcionamiento de la obra, sin perjuicio de plazos de garantía superiores establecidos por Ley que se mantienen vigentes.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">8.- CESIÓN.</span> - El PROVEEDOR no podrá subcontratar o ceder el contenido del Contrato/Pedido, en todo o en parte, sin la aprobación previa por escrito de CONSTRUCCIONES URDECON, S.A.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">9.- PENALIZACIÓN.</span> - Los gastos o perjuicios ocasionados por el incumplimiento de los plazos y /o de las especificaciones de compra, por causas imputables al proveedor, serán a cargo del mismo, pudiendo descontársele de cualquier factura pendiente de abono, correspondiente a la obra a que se refiere el presente contrato u otra en la que exista una cantidad pendiente de pago.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">10.- RESOLUCIÓN.</span> -El incumplimiento de los plazos de entrega, así como de los requisitos legales, técnicos o disposiciones aplicables al pedido, por causas imputables al proveedor, dará derecho a CONSTRUCCIONES URDECON, S.A. a exigir el cumplimiento del contrato o instar su resolución, con indemnización de los daños y perjuicios causados en ambos casos. El PROVEEDOR autoriza a CONSTRUCCIONES URDECON, S.A. a retener el pago de las facturas hasta que no se determine el importe de los daños causados.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">11.- OBLIGACIONES MEDIOAMBIENTALES.</span> - En el caso de generar residuos, el PROVEEDOR entregará a Gestor de Residuos Autorizado todos los que genere en las obras de CONSTRUCCIONES URDECON, S.A., cuya gestión se realizará conforme a la Ley Básica de Residuos, Ordenanzas Municipales y Legislación Autonómica que proceda sobre transporte y depósito de residuos. Así mismo el PROVEEDOR seguirá las indicaciones de CONSTRUCCIONES URDECON, S.A. en todo lo relativo a la gestión ambiental de la obra y cumplirá en todo momento con la Guía de Buenas Prácticas Ambientales de CONSTRUCCIONES URDECON, S.A.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">12.- EVALUACIÓN Y SEGUIMIENTO DE PROVEEDORES.-</span> Construcciones Urdecon, S.A. en cumplimiento de los requisitos establecidos en la norma ISO 9001, informa al Proveedor que, como parte de su sistema de gestión de la calidad, será objeto de evaluación y seguimiento continuo para garantizar el cumplimiento de los estándares de calidad, servicio y otros requisitos aplicables.</p>
+  <p>La evaluación del Proveedor se realizará de manera periódica con base en criterios como:</p>
+  <ul>
+    <li>Calidad de los productos/servicios suministrados.</li>
+    <li>Cumplimiento de plazos de entrega y condiciones contractuales.</li>
+    <li>Gestión de incidencias y reclamaciones.</li>
+    <li>Compromiso con los requisitos ambientales conforme a ISO 14001, en caso de ser aplicable.</li>
+  </ul>
+  <p>El resultado de dichas evaluaciones podrá determinar la continuidad de la relación comercial o la necesidad de implementar acciones correctivas. El Proveedor acepta expresamente someterse a este proceso de evaluación y colaborar con Construcciones Urdecon, S.A. en la mejora continua del desempeño.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">13.- PROTECCIÓN DE DATOS.-</span> Cada una de las Partes queda informada de que los datos de contacto de sus representantes y empleados serán tratados por la otra parte con la finalidad de permitir el desarrollo, cumplimiento y control de la relación de prestación de servicios concertada, siendo la base del tratamiento el cumplimiento de la relación contractual conservándose los datos durante todo el tiempo en que esta subsista y aún después, hasta que prescriban las eventuales responsabilidades derivadas de ella.</p>
+  <p>Adicionalmente, cada una de las Partes, cumplirá con su deber de información a sus respectivos representantes y empleados. En concreto, el proveedor informará a sus trabajadores de la cesión de sus datos a CONSTRUCCIONES URDECON, S.A. en caso necesario u otras empresas clientes, con la finalidad de coordinar actividades empresariales.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">14.-JURISDICCION.</span> - Para cuantas cuestiones litigiosas pudieran suscitarse como consecuencia del otorgamiento y ejecución de este contrato, ambas partes se someten a la jurisdicción de los juzgados y tribunales de la ciudad de Murcia, con renuncia a cualquier otro fuero que pudiera corresponderles.</p>
+</div>
+
+<p>Y en prueba de aceptación y conformidad con todas las manifestaciones y pactos contenidos en este contrato, firman las partes el presente documento por duplicado en el lugar y fecha arriba indicados.</p>
+
+<div class="signatures">
+  <div class="signatures-row">
+    <div class="signature-cell">
+      <div class="signature-role">El Contratista</div>
+      <div class="signature-company">CONSTRUCCIONES URDECON, S.A.</div>
+      <div class="signature-fdo">Fdo.: Enrique Fernández-Delgado Gavilá</div>
+    </div>
+    <div class="signature-cell">
+      <div class="signature-role">El Suministrador</div>
+      <div class="signature-company">{{ RAZON_SOCIAL or '' }}</div>
+      <div class="signature-fdo">Fdo.: {{ NOMBRE_GERENTE or '' }}</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

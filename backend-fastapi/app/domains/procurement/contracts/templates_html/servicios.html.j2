@@ -1,0 +1,181 @@
+{#
+  CONTRATO DE SERVICIOS — Plantilla HTML/Jinja2 para WeasyPrint.
+
+  Variables consumidas (todas string, ya formateadas por _build_substitution_context):
+    Datos URDECON (constructor): fijos en la plantilla.
+    Proveedor:        RAZON_SOCIAL, CIF, DIRECCION_EMPRESA, NOMBRE_GERENTE, NIF_GERENTE
+    Obra:             NOMBRE_OBRA
+    Servicio:         TIPO_SERVICIO
+    Económicos:       FORMA_PAGO
+    Fechas:           FECHA_INICIO, FECHA_FIN, DIA, MES, ANIO
+    Tabla partidas:   LINEAS (lista con med/uds/descripcion/precio/importe), TOTAL_LINEAS
+#}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Contrato de Servicios {{ NUM_OBRA or '' }}</title>
+  <link rel="stylesheet" href="base.css">
+</head>
+<body>
+
+<div class="page-header">
+  <img src="assets/logo-urdecon.svg" alt="URDECON">
+</div>
+
+<h1>CONTRATO DE SERVICIOS</h1>
+
+<p class="date-line">En Murcia a {{ DIA or '___' }} de {{ MES or '________' }} de {{ ANIO or '____' }}</p>
+
+<h2 class="section">Reunidos</h2>
+
+<p>De una parte, D. Enrique Fernández-Delgado Gavilá, mayor de edad, y con D.N.I. 34.828.322-C.</p>
+
+<p>De otra, D. {{ NOMBRE_GERENTE or '' }}, y con D.N.I. {{ NIF_GERENTE or '' }}.</p>
+
+<h2 class="section">Intervienen</h2>
+
+<p>D. Enrique Fernández-Delgado Gavilá, en nombre y representación de CONSTRUCCIONES URDECON, S.A., constituida mediante escritura de fecha 02 de abril de 1.979, que fue modificada para adaptarla a la legislación vigente mediante escritura otorgada el 18 de junio de 1991 ante el notario D. Martín García-Ripoll Espín bajo en N.º 1841 de orden de su protocolo, con C.I.F. A-30032205.</p>
+
+<p>Está facultado para este acto en virtud de escritura otorgada en Murcia, el día 30 de julio de 2010, ante el Notario D. PEDRO SOLANA HERNANDEZ, bajo el N.º 1.731 de orden de su protocolo.</p>
+
+<p>D. {{ NOMBRE_GERENTE or '' }}, D.N.I. {{ NIF_GERENTE or '' }} en nombre y representación de {{ RAZON_SOCIAL or '' }}, con domicilio en {{ DIRECCION_EMPRESA or '' }}, y con C.I.F {{ CIF or '' }}, y que en adelante será denominado el PRESTADOR DE SERVICIOS.</p>
+
+<p>Y reconociéndose, en la condición en que interviene cada uno, la capacidad legal necesaria para suscribir el presente documento,</p>
+
+<h2 class="section">Exponen</h2>
+
+<div class="clause">
+  <p><span class="clause-title">PRIMERO.</span> - Que la empresa {{ RAZON_SOCIAL or '' }}, realiza la prestación de servicios de su objeto social.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">SEGUNDO.</span> - Que CONSTRUCCIONES URDECON, S.A. es adjudicataria de las obras para realización de {{ NOMBRE_OBRA or '' }}</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">TERCERO.</span> - Que el Contratista ha decidido contratar parte de las obras derivadas del Contrato de Ejecución de Obra referido en el Exponen anterior.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">CUARTO.</span> - Que {{ RAZON_SOCIAL or '' }} cuenta con una larga experiencia en el campo de servicios de {{ TIPO_SERVICIO or '' }}.</p>
+</div>
+
+<p>En consecuencia, ambas partes, reconociéndose mutuamente la capacidad legal necesaria para contratar y obligarse, acuerdan celebrar el presente contrato de ejecución de servicios conforme a las siguientes:</p>
+
+<h2 class="section">Cláusulas</h2>
+
+<div class="clause">
+  <p><span class="clause-title">PRIMERA. - OBJETO</span></p>
+  <p>Constituye el objeto del presente Contrato el total de ejecución del siguiente servicio, obligándose éste a realizar la misma, con estricta sujeción a las condiciones establecidas en este documento, así como a las instrucciones que a tal objeto le indique el DIRECTOR de la obra y las prácticas de la buena construcción.</p>
+</div>
+
+{% if LINEAS %}
+<table class="materials-table">
+  <thead>
+    <tr>
+      <th class="col-med">Med.</th>
+      <th class="col-uds">Ud.</th>
+      <th class="col-desc">CONCEPTO</th>
+      <th class="col-num">Precio unitario</th>
+      <th class="col-num">IMPORTE</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for fila in LINEAS %}
+    <tr>
+      <td class="col-med">{{ fila.med }}</td>
+      <td class="col-uds">{{ fila.uds }}</td>
+      <td class="col-desc">{{ fila.descripcion }}</td>
+      <td class="col-num">{{ fila.precio }}</td>
+      <td class="col-num">{{ fila.importe }}</td>
+    </tr>
+    {% endfor %}
+    {% if TOTAL_LINEAS %}
+    <tr class="total-row">
+      <td colspan="4" class="text-right bold">TOTAL</td>
+      <td class="col-num bold">{{ TOTAL_LINEAS }}</td>
+    </tr>
+    {% endif %}
+  </tbody>
+</table>
+{% else %}
+<div class="materials-box"></div>
+{% endif %}
+
+<p><em>Se certificará lo realmente ejecutado en obra</em></p>
+
+<div class="clause">
+  <p><span class="clause-title">SEGUNDA. – GASTOS</span></p>
+  <p><strong>GASTOS POR CUENTA DEL PRESTADOR DE SERVICIOS.</strong> - Se entiende que los precios convenidos comprenden: mano de obra (salarios y seguros sociales), toda herramienta necesaria para hacer el trabajo y aquellos elementos que sean imprescindibles o complementarios para la ejecución completa de las unidades en cuestión; así como cuantas ayudas, acometidas y prestaciones auxiliares conlleva la correcta ejecución de los servicios.</p>
+  <p>Así mismo, si CONSTRUCCIONES URDECON, S.A. facilitará a {{ RAZON_SOCIAL or '' }}, cualquier tipo de material este será descontado de la certificación de obra inmediata posterior al suministro.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">TERCERA. - PLAZO DE EJECUCION Y ENTREGA DE LOS SERVICIOS</span></p>
+  <p>La fecha de inicio de los servicios se establece para el día {{ FECHA_INICIO or '' }} y la fecha de terminación se estima que sea para el día {{ FECHA_FIN or '' }}. Según circunstancias de obra de terminación.</p>
+  <p>CONSTRUCCIONES URDECON S.A., se reserva el derecho de poder contratar otras empresas, si considera que {{ RAZON_SOCIAL or '' }}, no cumple con el ritmo fijado en el presente contrato de servicios.</p>
+  <p>Al tratarse de la prestación de un servicio, la responsabilidad {{ RAZON_SOCIAL or '' }}, termina cuando finaliza el servicio, por lo que no se puede contemplar una penalización en su concepto más estricto.</p>
+  <p>En el supuesto de que al revisar la obra el Contratista observara cualquier deficiencia, comunicará tal hecho al prestador de servicios al objeto de que proceda a subsanarla en el plazo de 3 días hábiles desde la recepción de dicha comunicación. Si transcurrido dicho plazo no se hubiera procedido a su subsanación, el Contratista podrá subsanar la deficiencia el mismo, repercutiéndole el coste al prestador de servicios mediante la detracción del importe de las facturas pendiente de pago.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">CUARTA. - PRECIO.</span></p>
+  <p>Ambas Partes acuerdan que el precio por la ejecución de los servicios descritas en el "OBJETO DEL CONTRATO" son tal y como aparece en la cláusula primera de este contrato.</p>
+  <p>El presupuesto es cerrado, no se irá procediendo a su actualización conforme transcurra la ejecución de los servicios.</p>
+  <p>Se entiende que los precios convenidos comprenden la mano de obra precisa para la perfecta ejecución y culminación de los servicios.</p>
+  <p>Respecto al IVA la factura se incrementará con el IVA legalmente vigente en caso de que proceda su aplicación.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">QUINTA. – FORMA DE PAGO.</span></p>
+  <p>La forma de pago será mediante {{ FORMA_PAGO or '' }} dentro del periodo legal establecido de pago, desde la fecha de recepción de la factura por el responsable de la obra, más los necesarios para hacerlos coincidir con los días 22 inmediato posterior del mes correspondiente.</p>
+  <p>Además de la factura deberá presentarse la documentación solicitada, requisitos ambos imprescindibles a efectos del cálculo del cómputo de días para el vencimiento. Los precios convenidos llevan incluidos los intereses por aplazamiento y el coste en el pago convenido, conforme a lo establecido en la legislación vigente.</p>
+  <p>Simultáneamente con la factura, el prestador de servicios adjuntará en original y fotocopia para cotejo por el PROMOTOR de la siguiente documentación:</p>
+  <ol type="i">
+    <li>certificado de estar al corriente de pago de salarios al personal adscrito a la obra, firmado por los mismos; altas que puedan producirse;</li>
+    <li>seguros sociales (TC1 y TC2), debidamente sellados en señal de haber sido abonados, en los que figuren los trabajadores que de forma permanente o coyuntural presten servicios en la obra cuya ejecución es objeto del presente contrato;</li>
+    <li>los justificantes de pago de las pólizas de seguro de accidentes laborales; responsabilidad civil y de la maquinaria y vehículos que presten sus servicios en la obra.</li>
+  </ol>
+  <p>La no aportación de esta documentación exime al Contratista del pago de la factura hasta que aquella sea aportada.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">SEXTA. - CONFIDENCIALIDAD</span></p>
+  <p>La empresa {{ RAZON_SOCIAL or '' }}, mantendrá la más estricta confidencialidad sobre toda información comunicada por CONSTRUCCIONES URDECON, S.A. con motivo de la prestación de los servicios objeto de este contrato, comprometiéndose a utilizar dicha información únicamente para esta finalidad.</p>
+  <p>Igualmente, tanto los resultados obtenidos como la documentación entregada por CONSTRUCCIONES URDECON, S.A., serán considerados como confidenciales.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">SÉPTIMA. - CESIÓN</span></p>
+  <p>El presente contrato no podrá ser subrogado o cedido a terceros salvo previo acuerdo escrito entre las partes.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">OCTAVA. - INCUMPLIMENTO</span></p>
+  <p>En caso de incumplimiento del contrato por cualquiera de las partes, podrá resolverse sin esperar a su vencimiento, corriendo a cargo de la parte que haya incumplido sus obligaciones todos los gastos que por ello se originen.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">NOVENA. - PRELACIÓN DE NORMAS Y ARBITRAJE</span></p>
+  <p>Las partes contratantes se atendrán con carácter preferente a lo dispuesto en el presente contrato, y en su defecto, a lo establecido en el Código Civil y demás normas de aplicación.</p>
+  <p>Cualquier controversia que surja entre las partes sobre el cumplimiento o resolución de este contrato, se resolverá mediante arbitraje de equidad y conforme a la regulación contenida en la Ley de Arbitraje de Derecho Privado de 5 de diciembre de 1988.</p>
+</div>
+
+<p>Y en prueba de conformidad con lo expresado, suscriben el presente documento por duplicado, pero a un solo efecto en el lugar y fecha en el encabezamiento indicados.</p>
+
+<div class="signatures">
+  <div class="signatures-row">
+    <div class="signature-cell">
+      <div class="signature-company">CONSTRUCCIONES URDECON, S.A.</div>
+      <div class="signature-fdo">Fdo. Enrique Fernández-Delgado Gavilá</div>
+    </div>
+    <div class="signature-cell">
+      <div class="signature-company">{{ RAZON_SOCIAL or '' }}</div>
+      <div class="signature-fdo">Fdo. {{ NOMBRE_GERENTE or '' }}</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
