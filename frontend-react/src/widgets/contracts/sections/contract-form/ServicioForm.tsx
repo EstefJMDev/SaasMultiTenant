@@ -29,6 +29,7 @@ export interface ServicioFormHandlers {
   onSupplierAddressChange: (value: string) => void;
   onSupplierNameChange: (value: string) => void;
   onSupplierTaxIdChange: (value: string) => void;
+  onProjectNameChange: (value: string) => void;
   onServiceTypeChange: (value: string) => void;
   onWorkStartDateChange: (value: string) => void;
   onWorkEndDateChange: (value: string) => void;
@@ -60,6 +61,7 @@ export const ServicioForm: React.FC<ServicioFormProps> = ({
   onSupplierAddressChange,
   onSupplierNameChange,
   onSupplierTaxIdChange,
+  onProjectNameChange,
   onServiceTypeChange,
   onWorkStartDateChange,
   onWorkEndDateChange,
@@ -135,8 +137,7 @@ export const ServicioForm: React.FC<ServicioFormProps> = ({
           <InputField
             label="Nombre obra"
             value={projectName}
-            disabled
-            helper="Vinculada al comparativo"
+            onChange={onProjectNameChange}
           />
         </SimpleGrid>
       </Section>

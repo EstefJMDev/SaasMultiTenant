@@ -42,6 +42,10 @@ from app.platform.contracts_core.permissions import (
     ensure_tenant_access,
 )
 from app.domains.procurement.contracts import validators as contract_validators
+from app.domains.procurement.contracts.insurance import (
+    compute_subcontract_insurance_amount,
+    normalize_insurance_amount,
+)
 from app.models.hr import Department, EmployeeDepartment, EmployeeProfile, Position
 from app.models.notification import NotificationType
 from app.models.user import User
@@ -137,6 +141,23 @@ def _parse_amount(value: object) -> Optional[float]:
     except ValueError:
         return None
     return parsed if parsed > 0 else None
+
+
+def _resolve_contract_insurance_amount(
+    *,
+    contract_type: object,
+    total_amount: object,
+    explicit_value: object,
+) -> object:
+    if contract_type != "SUBCONTRATACION" and str(contract_type) != "ContractType.SUBCONTRATACION":
+        return None
+    computed = compute_subcontract_insurance_amount(total_amount)
+    if explicit_value in (None, ""):
+        return computed
+    explicit = normalize_insurance_amount(explicit_value)
+    if explicit is None:
+        return computed
+    return explicit
 
 
 def _merge_contract_data_from_comparative(
@@ -1157,6 +1178,11 @@ def create_contract(
         supplier_contact_name=payload.get("supplier_contact_name")
         or comparative_snapshot.get("supplier_contact_name"),
         total_amount=payload.get("total_amount") or comparative_snapshot.get("total_amount"),
+        insurance_amount=_resolve_contract_insurance_amount(
+            contract_type=payload["type"],
+            total_amount=payload.get("total_amount") or comparative_snapshot.get("total_amount"),
+            explicit_value=payload.get("insurance_amount"),
+        ),
         status=ContractStatus.DRAFT,
     )
     _sync_worksite_snapshot_into_contract(
@@ -1343,6 +1369,12 @@ def update_contract(
             if field == "total_amount" and value is None:
                 value = contract.total_amount
             setattr(contract, field, value)
+
+        contract.insurance_amount = _resolve_contract_insurance_amount(
+            contract_type=contract.type,
+            total_amount=contract.total_amount,
+            explicit_value=payload_to_apply.get("insurance_amount", contract.insurance_amount),
+        )
 
         # Re-derivar project_id desde el comparativo. description siempre NULL.
         # title NO se re-deriva: persiste el valor que el usuario escribió.

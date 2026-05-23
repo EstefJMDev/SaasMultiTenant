@@ -9,7 +9,7 @@ interface SectionProps {
 
 export const Section: React.FC<SectionProps> = ({ icon, title, children }) => {
   return (
-    <Box borderTop="4px solid" borderColor="gray.200" pt={6}>
+    <Box pt={2}>
       <HStack spacing={3} mb={4}>
         <Box color="blue.600">{icon}</Box>
         <Text fontWeight="bold">{title}</Text>

@@ -43,6 +43,7 @@ class ContractUpdate(BaseModel):
     supplier_legal_rep_dni: Optional[str] = None
 
     total_amount: Optional[Decimal] = None
+    insurance_amount: Optional[Decimal] = None
     currency: Optional[str] = None
 
     milestones_text: Optional[str] = None
@@ -108,6 +109,7 @@ class ContractRead(BaseModel):
     supplier_legal_rep_dni: Optional[str] = None
 
     total_amount: Optional[Decimal]
+    insurance_amount: Optional[Decimal] = None
     currency: Optional[str]
 
     milestones_text: Optional[str] = None

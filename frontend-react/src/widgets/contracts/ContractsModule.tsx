@@ -8935,6 +8935,7 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
   const [supplierBankBic, setSupplierBankBic] = useState(
     contract?.supplier_bank_bic ?? "",
   );
+  const [projectName, setProjectName] = useState("");
   const [nombreGerente, setNombreGerente] = useState("");
   const [nifGerente, setNifGerente] = useState("");
   const [terminoPago, setTerminoPago] = useState("");
@@ -9269,7 +9270,11 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
     setPriceType(economic.price_type ?? "CERRADO");
     setPriceText(economic.price_text ?? "");
     setPaymentMethod(economic.payment_method ?? "CONFIRMING 60");
-    setInsuranceAmount(economic.insurance_amount ?? "");
+    setInsuranceAmount(
+      contract?.insurance_amount !== null && contract?.insurance_amount !== undefined
+        ? String(contract.insurance_amount)
+        : (economic.insurance_amount ?? ""),
+    );
     setRetention(economic.retention ?? "SI");
     setRequestDate(schedule.request_date ?? "");
     setStartDate(schedule.start_date ?? project.fecha_inicio ?? "");
@@ -9356,6 +9361,12 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
         (compHeader.obra_numero as string | undefined) ??
         (compHeader.obra_num as string | undefined) ??
         (compHeader.num_obra as string | undefined) ??
+        "",
+    );
+    setProjectName(
+      (project.nombre_obra as string | undefined) ??
+        (compHeader.obra_nombre as string | undefined) ??
+        (compHeader.nombre_obra as string | undefined) ??
         "",
     );
     setPromoter(
@@ -9636,6 +9647,10 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
       supplier_bank_iban: supplierBankIban,
       supplier_bank_bic: supplierBankBic,
       total_amount: resolvedTotal,
+      insurance_amount:
+        tipoContrato === "SUBCONTRATACION"
+          ? parseAmount(insuranceAmount)
+          : null,
       currency: contract?.currency ?? "EUR",
       ...(isSuministroPayload
         ? {
@@ -9751,6 +9766,16 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
           termino_pago:
             terminoPago || (currentAdditional.termino_pago as string | undefined) || "",
         },
+        project: {
+          ...((currentData.project as Record<string, unknown> | undefined) ?? {}),
+          nombre_obra: projectName,
+          num_obra: projectNumber,
+          promotora: promoter,
+          promotor: promoter,
+          fecha_inicio: startDate,
+          fecha_fin: endDate,
+          duracion_obra: duracionObra,
+        },
         manager: {
           ...((currentData.manager as Record<string, unknown> | undefined) ?? {}),
           nombre_gerente: nombreGerente,
@@ -9838,6 +9863,7 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
     terminoPago,
     formaPagoPactadaDisplay,
     isSupplierEmailValid,
+    projectName,
     projectNumber,
     promoter,
     deedType,
@@ -9857,14 +9883,6 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
     const mm = String(raw.getMonth() + 1).padStart(2, "0");
     const yyyy = raw.getFullYear();
     return `${dd}/${mm}/${yyyy}`;
-  })();
-  const dedicatedProjectName = (() => {
-    const cd = (contract?.comparative_data as Record<string, any> | undefined) ?? {};
-    return (
-      (cd.obra_nombre as string | undefined) ??
-      (cd.nombre_obra as string | undefined) ??
-      ""
-    );
   })();
   const shouldAutoRefreshPdf =
     Boolean(contract?.id) &&
@@ -10061,7 +10079,7 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
             supplierAddress={supplierAddress}
             supplierName={supplierName}
             supplierTaxId={supplierTaxId}
-            projectName={dedicatedProjectName}
+            projectName={projectName}
             projectNumber={projectNumber}
             promoter={promoter}
             workStartDate={startDate}
@@ -10078,6 +10096,7 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
             onSupplierAddressChange={setSupplierAddress}
             onSupplierNameChange={setSupplierName}
             onSupplierTaxIdChange={setSupplierTaxId}
+            onProjectNameChange={setProjectName}
             onProjectNumberChange={setProjectNumber}
             onPromoterChange={setPromoter}
             onWorkStartDateChange={setStartDate}
@@ -10112,7 +10131,7 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
             deedDate={deedDate}
             notaryName={notaryName}
             notaryProtocol={notaryProtocol}
-            projectName={dedicatedProjectName}
+            projectName={projectName}
             projectNumber={projectNumber}
             promoter={promoter}
             workStartDate={startDate}
@@ -10124,6 +10143,7 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
             paymentMethodOtherText={paymentMethodOtherText}
             priceNumber={totalExecutionPrice}
             priceText={priceText}
+            insuranceAmount={insuranceAmount}
             numWorkers={workersCount}
             warrantyText={warrantyText}
             onSupplierLegalRepNameChange={setNombreGerente}
@@ -10135,6 +10155,7 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
             onDeedDateChange={setDeedDate}
             onNotaryNameChange={setNotaryName}
             onNotaryProtocolChange={setNotaryProtocol}
+            onProjectNameChange={setProjectName}
             onProjectNumberChange={setProjectNumber}
             onPromoterChange={setPromoter}
             onWorkStartDateChange={setStartDate}
@@ -10145,6 +10166,7 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
             onPaymentDaysChange={setPaymentDays}
             onPaymentMethodOtherTextChange={setPaymentMethodOtherText}
             onPriceNumberChange={setTotalExecutionPrice}
+            onInsuranceAmountChange={setInsuranceAmount}
             onNumWorkersChange={setWorkersCount}
             onWarrantyTextChange={setWarrantyText}
           />
@@ -10166,7 +10188,7 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
             supplierAddress={supplierAddress}
             supplierName={supplierName}
             supplierTaxId={supplierTaxId}
-            projectName={dedicatedProjectName}
+            projectName={projectName}
             serviceType={serviceCategory}
             workStartDate={startDate}
             workEndDate={endDate}
@@ -10178,6 +10200,7 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
             onSupplierAddressChange={setSupplierAddress}
             onSupplierNameChange={setSupplierName}
             onSupplierTaxIdChange={setSupplierTaxId}
+            onProjectNameChange={setProjectName}
             onServiceTypeChange={setServiceCategory}
             onWorkStartDateChange={setStartDate}
             onWorkEndDateChange={setEndDate}
@@ -10689,7 +10712,7 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
             supplierAddress={supplierAddress}
             supplierName={supplierName}
             supplierTaxId={supplierTaxId}
-            projectName={dedicatedProjectName}
+            projectName={projectName}
             projectNumber={projectNumber}
             promoter={promoter}
             workStartDate={startDate}
@@ -10706,6 +10729,7 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
             onSupplierAddressChange={setSupplierAddress}
             onSupplierNameChange={setSupplierName}
             onSupplierTaxIdChange={setSupplierTaxId}
+            onProjectNameChange={setProjectName}
             onProjectNumberChange={setProjectNumber}
             onPromoterChange={setPromoter}
             onWorkStartDateChange={setStartDate}
@@ -10740,7 +10764,7 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
             deedDate={deedDate}
             notaryName={notaryName}
             notaryProtocol={notaryProtocol}
-            projectName={dedicatedProjectName}
+            projectName={projectName}
             projectNumber={projectNumber}
             promoter={promoter}
             workStartDate={startDate}
@@ -10752,6 +10776,7 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
             paymentMethodOtherText={paymentMethodOtherText}
             priceNumber={totalExecutionPrice}
             priceText={priceText}
+            insuranceAmount={insuranceAmount}
             numWorkers={workersCount}
             warrantyText={warrantyText}
             onSupplierLegalRepNameChange={setNombreGerente}
@@ -10763,6 +10788,7 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
             onDeedDateChange={setDeedDate}
             onNotaryNameChange={setNotaryName}
             onNotaryProtocolChange={setNotaryProtocol}
+            onProjectNameChange={setProjectName}
             onProjectNumberChange={setProjectNumber}
             onPromoterChange={setPromoter}
             onWorkStartDateChange={setStartDate}
@@ -10773,6 +10799,7 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
             onPaymentDaysChange={setPaymentDays}
             onPaymentMethodOtherTextChange={setPaymentMethodOtherText}
             onPriceNumberChange={setTotalExecutionPrice}
+            onInsuranceAmountChange={setInsuranceAmount}
             onNumWorkersChange={setWorkersCount}
             onWarrantyTextChange={setWarrantyText}
           />
@@ -10794,7 +10821,7 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
             supplierAddress={supplierAddress}
             supplierName={supplierName}
             supplierTaxId={supplierTaxId}
-            projectName={dedicatedProjectName}
+            projectName={projectName}
             serviceType={serviceCategory}
             workStartDate={startDate}
             workEndDate={endDate}
@@ -10806,6 +10833,7 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
             onSupplierAddressChange={setSupplierAddress}
             onSupplierNameChange={setSupplierName}
             onSupplierTaxIdChange={setSupplierTaxId}
+            onProjectNameChange={setProjectName}
             onServiceTypeChange={setServiceCategory}
             onWorkStartDateChange={setStartDate}
             onWorkEndDateChange={setEndDate}

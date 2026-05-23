@@ -171,6 +171,7 @@ def _safe_contract_read(contract: Contract):
             "supplier_legal_rep_name": _safe_attr(contract, "supplier_legal_rep_name"),
             "supplier_legal_rep_dni": _safe_attr(contract, "supplier_legal_rep_dni"),
             "total_amount": _safe_attr(contract, "total_amount"),
+            "insurance_amount": _safe_attr(contract, "insurance_amount"),
             "currency": _safe_attr(contract, "currency"),
             "milestones_text": _safe_attr(contract, "milestones_text"),
             "freight_responsible": _safe_attr(contract, "freight_responsible"),

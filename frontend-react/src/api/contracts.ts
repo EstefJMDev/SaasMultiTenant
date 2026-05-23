@@ -60,6 +60,7 @@ export interface Contract {
   supplier_legal_rep_name?: string | null;
   supplier_legal_rep_dni?: string | null;
   total_amount?: string | number | null;
+  insurance_amount?: string | number | null;
   currency?: string | null;
   milestones_text?: string | null;
   freight_responsible?: string | null;
@@ -192,6 +193,7 @@ export interface ContractUpdatePayload {
   supplier_legal_rep_name?: string | null;
   supplier_legal_rep_dni?: string | null;
   total_amount?: number | null;
+  insurance_amount?: number | null;
   currency?: string | null;
   milestones_text?: string | null;
   freight_responsible?: string | null;

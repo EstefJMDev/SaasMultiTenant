@@ -34,6 +34,10 @@ from app.platform.contracts_core.models import (
 )
 from app.domains.documents.storage import build_contract_document_path, ensure_parent_dir
 from app.domains.procurement.contracts import crud as contract_crud
+from app.domains.procurement.contracts.insurance import (
+    compute_subcontract_insurance_amount,
+    format_insurance_amount_es,
+)
 
 logger = logging.getLogger("app.procurement.document_generator")
 
@@ -607,7 +611,10 @@ def _build_substitution_context(
     precio_letra = _amount_to_words_eur(contract.total_amount)
     num_trab = _str(raw_num_trab)
     num_trab_letra = _int_to_words_es(raw_num_trab)
-    garantia = _str(contract.warranty_text or contract.insurance_amount)
+    seguro = format_insurance_amount_es(
+        contract.insurance_amount or compute_subcontract_insurance_amount(contract.total_amount)
+    )
+    garantia = _str(contract.warranty_text) or seguro
     # Token SERVICIOS: tipo de servicio acordado.
     tipo_servicio = _str(contract.service_category)
     # Fecha de fin de obra (alias semántico de FECHA_FIN para plantilla SUBCONTRATACIÓN).
@@ -642,6 +649,7 @@ def _build_substitution_context(
         "NUM_TRAB": num_trab,
         "NUM_TRAB_LETRA": num_trab_letra,
         "GARANTIA": garantia,
+        "SEGURO": seguro,
         "FIN_OBRA": fecha_fin,
         # ── Token SERVICIOS ─────────────────────────────────────────────────
         "TIPO_SERVICIO": tipo_servicio,

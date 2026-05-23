@@ -40,6 +40,7 @@ export interface SubcontratacionFormValues {
   paymentMethodOtherText: string;
   priceNumber: string;
   priceText: string;
+  insuranceAmount: string;
   numWorkers: string;
   warrantyText: string;
 }
@@ -54,6 +55,7 @@ export interface SubcontratacionFormHandlers {
   onDeedDateChange: (value: string) => void;
   onNotaryNameChange: (value: string) => void;
   onNotaryProtocolChange: (value: string) => void;
+  onProjectNameChange: (value: string) => void;
   onProjectNumberChange: (value: string) => void;
   onPromoterChange: (value: string) => void;
   onWorkStartDateChange: (value: string) => void;
@@ -64,6 +66,7 @@ export interface SubcontratacionFormHandlers {
   onPaymentDaysChange: (value: string) => void;
   onPaymentMethodOtherTextChange: (value: string) => void;
   onPriceNumberChange: (value: string) => void;
+  onInsuranceAmountChange: (value: string) => void;
   onNumWorkersChange: (value: string) => void;
   onWarrantyTextChange: (value: string) => void;
 }
@@ -97,6 +100,7 @@ export const SubcontratacionForm: React.FC<SubcontratacionFormProps> = ({
   paymentMethodOtherText,
   priceNumber,
   priceText,
+  insuranceAmount,
   numWorkers,
   warrantyText,
   onSupplierLegalRepNameChange,
@@ -108,6 +112,7 @@ export const SubcontratacionForm: React.FC<SubcontratacionFormProps> = ({
   onDeedDateChange,
   onNotaryNameChange,
   onNotaryProtocolChange,
+  onProjectNameChange,
   onProjectNumberChange,
   onPromoterChange,
   onWorkStartDateChange,
@@ -118,6 +123,7 @@ export const SubcontratacionForm: React.FC<SubcontratacionFormProps> = ({
   onPaymentDaysChange,
   onPaymentMethodOtherTextChange,
   onPriceNumberChange,
+  onInsuranceAmountChange,
   onNumWorkersChange,
   onWarrantyTextChange,
 }) => {
@@ -221,8 +227,7 @@ export const SubcontratacionForm: React.FC<SubcontratacionFormProps> = ({
           <InputField
             label="Nombre obra"
             value={projectName}
-            disabled
-            helper="Vinculada al comparativo"
+            onChange={onProjectNameChange}
           />
           <InputField
             label="Número de obra"
@@ -332,6 +337,12 @@ export const SubcontratacionForm: React.FC<SubcontratacionFormProps> = ({
             value={priceText}
             disabled
             helper="Generado automáticamente desde el importe"
+          />
+          <InputField
+            label="Seguro responsabilidad civil"
+            value={insuranceAmount}
+            onChange={onInsuranceAmountChange}
+            helper="Se calcula por defecto según el importe, pero aquí puedes ajustarlo."
           />
         </SimpleGrid>
       </Section>

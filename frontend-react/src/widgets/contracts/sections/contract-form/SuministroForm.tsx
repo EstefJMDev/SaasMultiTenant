@@ -34,6 +34,7 @@ export interface SuministroFormHandlers {
   onSupplierAddressChange: (value: string) => void;
   onSupplierNameChange: (value: string) => void;
   onSupplierTaxIdChange: (value: string) => void;
+  onProjectNameChange: (value: string) => void;
   onProjectNumberChange: (value: string) => void;
   onPromoterChange: (value: string) => void;
   onWorkStartDateChange: (value: string) => void;
@@ -76,6 +77,7 @@ export const SuministroForm: React.FC<SuministroFormProps> = ({
   onSupplierAddressChange,
   onSupplierNameChange,
   onSupplierTaxIdChange,
+  onProjectNameChange,
   onProjectNumberChange,
   onPromoterChange,
   onWorkStartDateChange,
@@ -171,8 +173,7 @@ export const SuministroForm: React.FC<SuministroFormProps> = ({
           <InputField
             label="Nombre obra"
             value={projectName}
-            disabled
-            helper="Vinculada al comparativo"
+            onChange={onProjectNameChange}
           />
           <InputField
             label="Número de obra"
