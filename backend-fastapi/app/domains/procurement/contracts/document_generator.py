@@ -614,7 +614,9 @@ def _build_substitution_context(
     seguro = format_insurance_amount_es(
         contract.insurance_amount or compute_subcontract_insurance_amount(contract.total_amount)
     )
-    garantia = _str(contract.warranty_text) or seguro
+    # En SUBCONTRATACION el seguro RC y la garantía son conceptos distintos:
+    # no reutilizar la cuantía del seguro como fallback de GARANTIA.
+    garantia = _str(contract.warranty_text)
     # Token SERVICIOS: tipo de servicio acordado.
     tipo_servicio = _str(contract.service_category)
     # Fecha de fin de obra (alias semántico de FECHA_FIN para plantilla SUBCONTRATACIÓN).

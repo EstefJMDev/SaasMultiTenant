@@ -131,9 +131,8 @@ def _contract_field_map(contract: Contract) -> dict[str, str]:
         str(additional.get("seguro_responsabilidad_civil_text") or "").strip()
         or _price_to_words_upper(insurance_amount if insurance_amount != "N/A" else None)
     )
+    # En SUBCONTRATACION el seguro RC no debe rellenar GARANTIA por defecto.
     guarantee_value = str(additional.get("garantias") or additional.get("garantia") or "").strip()
-    if not guarantee_value and insurance_amount != "N/A":
-        guarantee_value = insurance_amount
 
     project_name_value = (
         str(
@@ -687,6 +686,7 @@ def _bracket_tokens_for_contract(contract: Contract) -> dict[str, str]:
         "NUM_TRAB": _s(m.get("num_trab") or m.get("min_workers_number")),
         "NUM_TRAB_LETRA": _s(m.get("num_trab_let") or m.get("min_workers_text")),
         "GARANTIA": _s(m.get("garantia") or m.get("guarantee")),
+        "SEGURO": _s(m.get("seguro_responsabilidad_civil") or m.get("seguro_rc")),
         "TIPO_SERVICIO": _s(m.get("service_category") or m.get("categoria_servicio")),
         # Líneas del comparativo (consumidas solo por plantillas HTML/Jinja).
         "LINEAS": lineas,
@@ -773,4 +773,3 @@ def generate_contract(contract: Contract) -> Path | None:
     write_bytes_from_path(path, summary_path)
 
     return path
-
