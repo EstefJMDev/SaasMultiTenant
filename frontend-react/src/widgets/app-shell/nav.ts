@@ -223,9 +223,10 @@ export const buildNavSections = (
         children: [
           {
             id: "legal_contracts",
-            label: t("layout.nav.legalContracts"),
+            label: t("layout.nav.departmentContracts"),
             to: "/legal-contracts",
             matchPrefix: true,
+            icon: FileText as any,
             isVisible: () => ctx.canShowChildNav("legal", "legal_contracts"),
           },
         ],
@@ -238,9 +239,10 @@ export const buildNavSections = (
         children: [
           {
             id: "administration_contracts",
-            label: t("layout.nav.administrationContracts"),
+            label: t("layout.nav.departmentContracts"),
             to: "/admin-contracts",
             matchPrefix: true,
+            icon: FileText as any,
             isVisible: () =>
               ctx.canShowChildNav(
                 "administration_department",

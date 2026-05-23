@@ -1948,7 +1948,11 @@ export const ContractsModule: React.FC<ContractsModuleProps> = ({
             />
           )}
           {currentView === "contrato-form" && (
-            <>
+            <Box
+              h={{ base: "auto", lg: "calc(100dvh - 128px)" }}
+              minH={0}
+              overflow="hidden"
+            >
               <ContratoForm
                 tabsNavigation={tabsNavigation}
                 comparativoData={comparativoData}
@@ -2097,7 +2101,7 @@ export const ContractsModule: React.FC<ContractsModuleProps> = ({
                   ) : null
                 }
               />
-            </>
+            </Box>
           )}
           {currentView === "approval-panel" && (
             <ApprovalPanel
@@ -8866,7 +8870,7 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
     isSuperAdmin || currentUserForCaps?.can_edit_contract,
   );
   const panelMutedBg = useColorModeValue("gray.50", "gray.900");
-  const desktopPaneHeight = { base: "auto", lg: "calc(100dvh - 112px)" };
+  const desktopPaneHeight = { base: "auto", lg: "full" };
   const [isViewFieldsOpen, setIsViewFieldsOpen] = useState(false);
   const [isViewWorkflowOpen, setIsViewWorkflowOpen] = useState(true);
   const [pdfRefreshToken, setPdfRefreshToken] = useState(0);
@@ -9900,21 +9904,33 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
   };
 
   return (
-    <Stack spacing={6}>
+    <Stack
+      spacing={6}
+      h={{ base: "auto", lg: "full" }}
+      minH={0}
+      overflow="hidden"
+    >
       {tabsNavigation}
       <Grid
         templateColumns={{ base: "1fr", lg: "minmax(0, 1fr) minmax(0, 1fr)" }}
         gap={6}
         alignItems={{ base: "start", lg: "stretch" }}
+        flex="1"
+        h={{ base: "auto", lg: "full" }}
+        minH={0}
+        overflow="hidden"
       >
         <GridItem
           order={{ base: 1, lg: 0 }}
           alignSelf={{ base: "auto", lg: "stretch" }}
+          h={{ base: "auto", lg: "full" }}
+          minH={0}
         >
           <Box
             position={{ base: "static", lg: "sticky" }}
             top={{ base: "auto", lg: 0 }}
             h={desktopPaneHeight}
+            minH={0}
           >
             <ContractPdfViewer
               contractId={contract?.id}
@@ -9926,7 +9942,7 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
             />
           </Box>
         </GridItem>
-        <GridItem minW={0} display="flex">
+        <GridItem minW={0} display="flex" h={{ base: "auto", lg: "full" }} minH={0}>
       <Box
         bg={cardBg}
         border="1px solid"
@@ -9937,6 +9953,7 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
         flexDirection="column"
         flex="1"
         h={desktopPaneHeight}
+        minH={0}
       >
         <Box px={6} py={5} borderBottom="1px solid" borderColor={borderColor}>
           <Flex
@@ -10702,7 +10719,14 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
           )}
         </Box>
       ) : (
-        <Box as="fieldset" disabled={isReadOnlyView} border="none" m={0} p={0}>
+        <Box
+          as="fieldset"
+          disabled={isReadOnlyView}
+          border="none"
+          m={0}
+          p={0}
+          minH={0}
+        >
       {isSuministro ? (
         <Box p={6}>
           <SuministroForm
