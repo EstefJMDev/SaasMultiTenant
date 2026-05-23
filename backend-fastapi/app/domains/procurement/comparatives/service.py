@@ -920,13 +920,6 @@ def _ensure_user_can_manage_comparative(
 ) -> None:
     if can_view_all_comparatives(session, user) or can_view_all_contracts(session, user):
         return
-
-    _ensure_user_can_manage_comparative(
-        session,
-        contract=contract,
-        tenant_id=tenant_id,
-        user=user,
-    )
     branch = _resolve_comparative_branch(session, user)
     if branch == ContractDepartment.GERENCIA:
         return
