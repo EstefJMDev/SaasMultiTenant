@@ -132,7 +132,33 @@ def _contract_field_map(contract: Contract) -> dict[str, str]:
         or _price_to_words_upper(insurance_amount if insurance_amount != "N/A" else None)
     )
     # En SUBCONTRATACION el seguro RC no debe rellenar GARANTIA por defecto.
-    guarantee_value = str(additional.get("garantias") or additional.get("garantia") or "").strip()
+    retention_value = str(economic.get("retention") or "").strip().upper()
+    if retention_value == "NO":
+        retention_guarantee_default = (
+            "El CONTRATISTA retendrá el 0% de cada factura que expida el SUBCONTRATISTA, "
+            "por tanto, la certificación y/o factura mensual debe llevar reflejada la "
+            "retención por garantía."
+        )
+    elif retention_value == "SI":
+        retention_guarantee_default = (
+            "El CONTRATISTA practicará una retención del cinco por ciento (5 %) sobre el "
+            "importe de cada certificación o factura emitida por el SUBCONTRATISTA, en "
+            "concepto de garantía de la correcta ejecución de los trabajos. En "
+            "consecuencia, cada certificación y/o factura mensual deberá reflejar "
+            "expresamente dicha retención.\n\n"
+            "Las cantidades retenidas se mantendrán durante la ejecución de la obra. A la "
+            "emisión de la última certificación, el SUBCONTRATISTA deberá aportar un aval "
+            "bancario por importe equivalente al cinco por ciento (5 %) del importe final "
+            "certificado, con una vigencia mínima de doce (12) meses, que permitirá la "
+            "liberación y canje de las retenciones practicadas durante la obra."
+        )
+    else:
+        retention_guarantee_default = ""
+    retention_guarantee_value = (
+        str(getattr(contract, "warranty_text", None) or "").strip()
+        or retention_guarantee_default
+    )
+    guarantee_value = retention_guarantee_value
 
     project_name_value = (
         str(
@@ -349,6 +375,7 @@ def _contract_field_map(contract: Contract) -> dict[str, str]:
         "promotora": promoter_value,
         "service_category": str(service.get("category") or ""),
         "categoria_servicio": str(service.get("category") or ""),
+        "retencion_garantia": retention_guarantee_value,
         "shipping_responsibility": shipping_value,
         "portes": shipping_value,
         "unloading_responsibility": unloading_value,
@@ -686,6 +713,7 @@ def _bracket_tokens_for_contract(contract: Contract) -> dict[str, str]:
         "NUM_TRAB": _s(m.get("num_trab") or m.get("min_workers_number")),
         "NUM_TRAB_LETRA": _s(m.get("num_trab_let") or m.get("min_workers_text")),
         "GARANTIA": _s(m.get("garantia") or m.get("guarantee")),
+        "RETENCION_GARANTIA": _s(m.get("retencion_garantia")),
         "SEGURO": _s(m.get("seguro_responsabilidad_civil") or m.get("seguro_rc")),
         "TIPO_SERVICIO": _s(m.get("service_category") or m.get("categoria_servicio")),
         # Líneas del comparativo (consumidas solo por plantillas HTML/Jinja).

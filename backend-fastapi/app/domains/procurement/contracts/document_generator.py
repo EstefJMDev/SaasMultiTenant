@@ -616,7 +616,30 @@ def _build_substitution_context(
     )
     # En SUBCONTRATACION el seguro RC y la garantía son conceptos distintos:
     # no reutilizar la cuantía del seguro como fallback de GARANTIA.
-    garantia = _str(contract.warranty_text)
+    retention_value = _str(economic.get("retention")).upper()
+    if retention_value == "NO":
+        retencion_garantia_default = (
+            "El CONTRATISTA retendrá el 0% de cada factura que expida el SUBCONTRATISTA, "
+            "por tanto, la certificación y/o factura mensual debe llevar reflejada la "
+            "retención por garantía."
+        )
+    elif retention_value == "SI":
+        retencion_garantia_default = (
+            "El CONTRATISTA practicará una retención del cinco por ciento (5 %) sobre el "
+            "importe de cada certificación o factura emitida por el SUBCONTRATISTA, en "
+            "concepto de garantía de la correcta ejecución de los trabajos. En "
+            "consecuencia, cada certificación y/o factura mensual deberá reflejar "
+            "expresamente dicha retención.\n\n"
+            "Las cantidades retenidas se mantendrán durante la ejecución de la obra. A la "
+            "emisión de la última certificación, el SUBCONTRATISTA deberá aportar un aval "
+            "bancario por importe equivalente al cinco por ciento (5 %) del importe final "
+            "certificado, con una vigencia mínima de doce (12) meses, que permitirá la "
+            "liberación y canje de las retenciones practicadas durante la obra."
+        )
+    else:
+        retencion_garantia_default = ""
+    retencion_garantia = _str(contract.warranty_text) or retencion_garantia_default
+    garantia = retencion_garantia
     # Token SERVICIOS: tipo de servicio acordado.
     tipo_servicio = _str(contract.service_category)
     # Fecha de fin de obra (alias semántico de FECHA_FIN para plantilla SUBCONTRATACIÓN).
@@ -651,6 +674,7 @@ def _build_substitution_context(
         "NUM_TRAB": num_trab,
         "NUM_TRAB_LETRA": num_trab_letra,
         "GARANTIA": garantia,
+        "RETENCION_GARANTIA": retencion_garantia,
         "SEGURO": seguro,
         "FIN_OBRA": fecha_fin,
         # ── Token SERVICIOS ─────────────────────────────────────────────────

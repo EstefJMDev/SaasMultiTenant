@@ -6795,7 +6795,8 @@ const ComparativoReview: React.FC<ComparativoReviewProps> = ({
           payment_method: formaPago,
           payment_method_agreed: formaPagoPactada,
           retention: retencion,
-          retention_description: retencionDescripcion,
+          retention_description:
+            retencion === "NO" ? retencionDescripcion : "",
         },
         additional: {
           ...(((currentContract?.contract_data as Record<string, any> | undefined)?.additional as Record<string, unknown> | undefined) ?? {}),
@@ -7941,18 +7942,20 @@ const ComparativoReview: React.FC<ComparativoReviewProps> = ({
                         <Radio value="NO" size="sm" isDisabled={isInfoReadOnly}>No</Radio>
                       </HStack>
                     </RadioGroup>
-                    <Box mt={3}>
-                      <Text fontSize="sm" fontWeight="medium" mb={2}>
-                        Descripción
-                      </Text>
-                      <Textarea
-                        rows={3}
-                        value={retencionDescripcion}
-                        onChange={(e) => setRetencionDescripcion(e.target.value)}
-                        isDisabled={isInfoReadOnly}
-                        placeholder="Detalle de la retención por garantía…"
-                      />
-                    </Box>
+                    {retencion === "NO" && (
+                      <Box mt={3}>
+                        <Text fontSize="sm" fontWeight="medium" mb={2}>
+                          Justificación
+                        </Text>
+                        <Textarea
+                          rows={3}
+                          value={retencionDescripcion}
+                          onChange={(e) => setRetencionDescripcion(e.target.value)}
+                          isDisabled={isInfoReadOnly}
+                          placeholder="Justifica por qué no aplica la retención por garantía…"
+                        />
+                      </Box>
+                    )}
                   </Box>
                 </Stack>
               </Section>
@@ -8059,7 +8062,7 @@ const ComparativoReview: React.FC<ComparativoReviewProps> = ({
                       <Text fontWeight="medium">{retencion === "SI" ? "Sí" : "No"}</Text>
                     </Box>
                   </SimpleGrid>
-                  {retencionDescripcion && (
+                  {retencion === "NO" && retencionDescripcion && (
                     <Box>
                       <Text color="gray.500" fontSize="xs">Descripción retención</Text>
                       <Text fontWeight="medium">{retencionDescripcion}</Text>
@@ -9001,6 +9004,13 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
       maximumFractionDigits: 2,
     }).format(value);
 
+  const buildRetentionWarrantyText = (retentionValue: string): string => {
+    if (retentionValue === "NO") {
+      return "El CONTRATISTA retendrá el 0% de cada factura que expida el SUBCONTRATISTA, por tanto, la certificación y/o factura mensual debe llevar reflejada la retención por garantía.";
+    }
+    return "El CONTRATISTA practicará una retención del cinco por ciento (5 %) sobre el importe de cada certificación o factura emitida por el SUBCONTRATISTA, en concepto de garantía de la correcta ejecución de los trabajos. En consecuencia, cada certificación y/o factura mensual deberá reflejar expresamente dicha retención.\n\nLas cantidades retenidas se mantendrán durante la ejecución de la obra. A la emisión de la última certificación, el SUBCONTRATISTA deberá aportar un aval bancario por importe equivalente al cinco por ciento (5 %) del importe final certificado, con una vigencia mínima de doce (12) meses, que permitirá la liberación y canje de las retenciones practicadas durante la obra.";
+  };
+
   const numberToWordsEs = (input: number): string => {
     const units: Record<number, string> = {
       0: "CERO",
@@ -9279,7 +9289,8 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
         ? String(contract.insurance_amount)
         : (economic.insurance_amount ?? ""),
     );
-    setRetention(economic.retention ?? "SI");
+    const hydratedRetention = economic.retention ?? "SI";
+    setRetention(hydratedRetention);
     setRequestDate(schedule.request_date ?? "");
     setStartDate(schedule.start_date ?? project.fecha_inicio ?? "");
     setEndDate(schedule.end_date ?? project.fecha_fin ?? "");
@@ -9396,7 +9407,9 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
     );
     setNotaryName(contract?.notary_name ?? "");
     setNotaryProtocol(contract?.notary_protocol ?? "");
-    setWarrantyText(contract?.warranty_text ?? "");
+    setWarrantyText(
+      contract?.warranty_text ?? buildRetentionWarrantyText(hydratedRetention),
+    );
     // Portes / descargas: el comparativo guarda en additional.freight_party /
     // additional.unloading_party. logistics.shipping_type es legacy de
     // SUBCONTRATACION. El comparativo guarda CamelCase ("Proveedor"/"Urdecon")
@@ -9436,6 +9449,19 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
   useEffect(() => {
     setRequestDate(computeRequestDate(startDate));
   }, [startDate]);
+
+  useEffect(() => {
+    if (tipoContrato !== "SUBCONTRATACION") return;
+    const autoSi = buildRetentionWarrantyText("SI");
+    const autoNo = buildRetentionWarrantyText("NO");
+    const current = warrantyText.trim();
+    if (!current || current === autoSi || current === autoNo) {
+      const next = buildRetentionWarrantyText(retention);
+      if (current !== next.trim()) {
+        setWarrantyText(next);
+      }
+    }
+  }, [tipoContrato, retention, warrantyText]);
 
   useEffect(() => {
     const executionTotal = getExecutionTotal();
