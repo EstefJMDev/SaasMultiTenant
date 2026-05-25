@@ -1,0 +1,33 @@
+Implementa cambios reales sobre este repo FastAPI + SQLModel + PostgreSQL para la reestructuracion comparativos/contratos, siguiendo estas reglas:
+
+1) Estado del proyecto (actualizado)
+- Fase 1: completada y validada en ejecucion real.
+- Fase 2: completada (`comparativos_schemas.py`).
+- Fase 2.1: completada (tenant_id alineado en todas las tablas nuevas).
+- Fase 3: implementada a nivel de codigo en `app/domains/procurement/comparativos_v2/`.
+- Fase 4: aun no iniciada.
+
+2) Restricciones activas
+- No tocar frontend.
+- No migrar datos legacy.
+- No romper flujo legacy.
+- No tocar endpoints legacy salvo bloqueo real.
+- No implementar aun generacion real de contrato desde comparativo.
+
+3) Reglas de datos cerradas
+- El comparativo nuevo no usa `contract`.
+- `cif` y `razon_social` se leen desde `proveedores`; no se persisten en `comparativos`.
+- `supplier` no se usa en el flujo nuevo.
+- FK a `proveedores.id` en BIGINT explicito.
+- Todas las tablas nuevas deben mantener `tenant_id`.
+- Hitos, aprobaciones e historial en tablas separadas.
+
+4) Forma de trabajo
+- Inspeccionar primero codigo real del repo.
+- Hacer cambios minimos, seguros y coherentes con legacy.
+- Si detectas conflicto estructural, explicarlo antes de una solucion grande.
+- Entregar siempre resumen claro por archivo modificado.
+
+5) Prioridad actual
+- Continuar desde Fase 3 ya implementada.
+- Siguiente hito natural: router nuevo del flujo `comparativos_v2` o validacion funcional de servicio, segun se indique.

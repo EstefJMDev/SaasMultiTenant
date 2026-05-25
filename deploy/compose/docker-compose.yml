@@ -1,0 +1,237 @@
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-saas}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      TZ: Europe/Madrid
+    ports:
+      - "${DB_HOST_PORT:-5433}:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-saas}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    ports:
+      - "${REDIS_HOST_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
+  backend-fastapi:
+    image: plataforma-backend-fastapi:local
+    build:
+      context: ../../backend-fastapi
+      dockerfile: Dockerfile
+      args:
+        INSTALL_OCR_TOOLS: "1"
+        INSTALL_LIBREOFFICE: "1"
+    restart: unless-stopped
+    env_file:
+      - ../env/backend.local.env
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@db:5432/${DB_NAME:-saas}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      INVOICES_STORAGE_PATH: /data/invoices
+      CONTRACTS_STORAGE_PATH: /data/contracts
+      TZ: Europe/Madrid
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/', timeout=2)",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    ports:
+      - "${BACKEND_HOST_PORT:-8000}:8000"
+    volumes:
+      - ../data/invoices:/data/invoices
+      - ../data/contracts:/data/contracts
+      - ../data/logos:/app/data/logos
+      - ../data/avatars:/app/data/avatars
+      - ../data/project-docs:/app/data/project-docs
+
+  celery-worker:
+    image: plataforma-backend-fastapi:local
+    pull_policy: never
+    restart: unless-stopped
+    env_file:
+      - ../env/backend.local.env
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@db:5432/${DB_NAME:-saas}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      INVOICES_STORAGE_PATH: /data/invoices
+      CONTRACTS_STORAGE_PATH: /data/contracts
+      TZ: Europe/Madrid
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend-fastapi:
+        condition: service_healthy
+    command:
+      [
+        "celery",
+        "-A",
+        "app.workers.celery_app.celery_app",
+        "worker",
+        "--loglevel=INFO",
+        "--concurrency=1",
+      ]
+    volumes:
+      - ../data/invoices:/data/invoices
+      - ../data/contracts:/data/contracts
+
+  celery-beat:
+    image: plataforma-backend-fastapi:local
+    pull_policy: never
+    restart: unless-stopped
+    env_file:
+      - ../env/backend.local.env
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@db:5432/${DB_NAME:-saas}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      INVOICES_STORAGE_PATH: /data/invoices
+      CONTRACTS_STORAGE_PATH: /data/contracts
+      TZ: Europe/Madrid
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend-fastapi:
+        condition: service_healthy
+    command:
+      [
+        "celery",
+        "-A",
+        "app.workers.celery_app.celery_app",
+        "beat",
+        "--loglevel=INFO",
+      ]
+    volumes:
+      - ../data/invoices:/data/invoices
+      - ../data/contracts:/data/contracts
+
+  flower:
+    image: mher/flower:2.0.1
+    restart: unless-stopped
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      TZ: Europe/Madrid
+    depends_on:
+      redis:
+        condition: service_healthy
+    command:
+      [
+        "celery",
+        "--broker=redis://redis:6379/0",
+        "flower",
+        "--port=5555",
+        "--basic-auth=${FLOWER_BASIC_AUTH:-admin:changeme}",
+      ]
+    ports:
+      - "${FLOWER_HOST_PORT:-5555}:5555"
+
+  agent-system:
+    image: plataforma-agent-system:local
+    build:
+      context: ../../agent-system
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      PORT: "3000"
+      NODE_ENV: production
+      LLM_PROVIDER: ${AGENT_LLM_PROVIDER:-ollama}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${AGENT_OLLAMA_MODEL:-gemma4:e4b}
+      OLLAMA_TIMEOUT_MS: "120000"
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      CLAUDE_MODEL: ${AGENT_CLAUDE_MODEL:-claude-sonnet-4-20250514}
+      FASTAPI_BASE_URL: http://backend-fastapi:8000
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: ${DB_NAME:-saas}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_SSL: "false"
+      LOG_LEVEL: info
+      TZ: Europe/Madrid
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      db:
+        condition: service_healthy
+      backend-fastapi:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    ports:
+      - "${AGENT_HOST_PORT:-3000}:3000"
+
+  frontend-react:
+    image: plataforma-frontend-react:local
+    build:
+      context: ../../frontend-react
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ../env/frontend.local.env
+    environment:
+      VITE_API_URL: /api
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+      VITE_API_PROXY_TARGET: http://backend-fastapi:8000
+      VITE_AGENT_PROXY_TARGET: http://agent-system:3000
+      TZ: Europe/Madrid
+    depends_on:
+      backend-fastapi:
+        condition: service_healthy
+      agent-system:
+        condition: service_started
+    ports:
+      - "${FRONTEND_HOST_PORT:-5173}:5173"
+
+volumes:
+  db_data:

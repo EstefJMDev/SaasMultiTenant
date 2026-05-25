@@ -1,0 +1,13 @@
+export { ErpComparativesPage } from "./ErpComparativesPage";
+export { ErpContractsPage } from "../contracts/ContractsPage";
+export { ErpExternalCollaborationsPage } from "./ErpExternalCollaborationsPage";
+export { ErpInvoicesPage } from "../invoices/InvoicesPage";
+export { ErpProjectBudgetPage } from "./ErpProjectBudgetPage";
+export { ErpProjectDetailPage } from "./ErpProjectDetailPage";
+export { ErpProjectDocumentsPage } from "./ErpProjectDocumentsPage";
+export { ErpProjectsPage } from "./ErpProjectsPage";
+export { ErpSimulationsPage } from "../simulations/SimulationsPage";
+export { ErpTasksPage } from "./ErpTasksPage";
+export { ErpWorkManagementPage } from "./ErpWorkManagementPage";
+export { TimeControlPage } from "./TimeControlPage";
+export { TimeReportPage } from "./TimeReportPage";

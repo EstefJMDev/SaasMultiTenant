@@ -1,0 +1,585 @@
+{#
+  CONTRATO DE SUBCONTRATACIÓN DE OBRA — Plantilla HTML/Jinja2 para WeasyPrint.
+
+  Variables consumidas (todas string, ya formateadas por _build_substitution_context):
+    Datos URDECON (constructor): fijos en la plantilla.
+    Proveedor:        RAZON_SOCIAL, CIF, DIRECCION_EMPRESA, NOMBRE_GERENTE, NIF_GERENTE
+    Escritura prov.:  TIPO_ESCRITURA, NOMBRE_NOTARIO, NUMERO_PROTOCOLO, FECHA_ESCRITURA (opcional)
+    Obra:             NOMBRE_OBRA, NUMERO_OBRA, NUM_OBRA, PROMOTORA, DURACION_OBRA, HITOS
+    Económicos:       PRECIO_NUMERO, PRECIO_LETRA, FORMA_PAGO
+    Trabajadores:     NUM_TRAB, NUM_TRAB_LETRA
+    Garantía:         GARANTIA
+    Seguro:           SEGURO
+    Fechas:           FECHA_INICIO, FECHA_FIN, FIN_OBRA, DIA, MES, ANIO
+    Tabla partidas:   LINEAS (lista con med/uds/descripcion/precio/importe), TOTAL_LINEAS
+#}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Contrato de Subcontratación {{ NUM_OBRA or '' }}</title>
+  <link rel="stylesheet" href="base.css">
+</head>
+<body>
+
+<div class="page-header">
+  <img src="assets/logo-urdecon.svg" alt="URDECON">
+</div>
+
+{# ──────────────────── CONDICIONES PARTICULARES ──────────────────── #}
+
+<h1>SUBCONTRATACIÓN DE OBRA</h1>
+<h2 class="subtitle">Condiciones Particulares</h2>
+
+<p class="date-line">En Murcia, a {{ DIA or '___' }} de {{ MES or '________' }} de {{ ANIO or '____' }}</p>
+
+<h2 class="section">Reunidos</h2>
+
+<p>De una parte, D. Enrique Fernández-Delgado Gavilá, con D.N.I. 34828322-C con domicilio en Puente Tocinos, C/ Mayor, 55 – Pol. Industrial Camposol</p>
+
+<p>Y de otra, D. {{ NOMBRE_GERENTE or '' }}, con D.N.I. {{ NIF_GERENTE or '' }}, con domicilio en {{ DIRECCION_EMPRESA or '' }}.</p>
+
+<h2 class="section">Intervienen</h2>
+
+<p>D. Enrique Fernández-Delgado Gavilá en nombre y representación de CONSTRUCCIONES URDECON, S.A. con domicilio en Puente Tocinos (Murcia), C/ Mayor, 55 – Polígono Industrial Camposol y C.I.F. A-30032205, en virtud de escritura de constitución/apoderamiento de fecha 30 de Julio de 2010 otorgada ante el Notario D. Pedro Solano Hernández, bajo en nº 1.731 de orden de su protocolo. (EN ADELANTE EL CONTRATISTA)</p>
+
+<p>Y D. {{ NOMBRE_GERENTE or '' }}, en nombre y representación de {{ RAZON_SOCIAL or '' }}, con domicilio {{ DIRECCION_EMPRESA or '' }}, y CIF {{ CIF or '' }} en virtud de escritura de {{ TIPO_ESCRITURA or '' }} de fecha {{ FECHA_ESCRITURA or '' }} otorgada ante el Notario D. {{ NOMBRE_NOTARIO or '' }} bajo el nº {{ NUMERO_PROTOCOLO or '' }} de su orden de protocolo (EN ADELANTE EL SUBCONTRATISTA).</p>
+
+<p>Ambas partes se reconocen capacidad legal para la celebración del presente subcontrato de ejecución de obra y,</p>
+
+<h2 class="section">Manifiestan</h2>
+
+<p>Que CONSTRUCCIONES URDECON, S.A. es adjudicataria de las obras {{ NOMBRE_OBRA or '' }} promovidas por {{ PROMOTORA or '' }}, con número de expediente {{ NUMERO_OBRA or NUM_OBRA or '' }} (código de obra interno Urdecon).</p>
+
+<p>Que para la ejecución de las obras ha decidido subcontratar con el SUBCONTRATISTA la ejecución de una parte de las unidades de obra con estricta sujeción a lo dispuesto en las condiciones generales del contrato y en las condiciones particulares establecidas. Las condiciones particulares prevalecen sobre las generales, aunque se complementan y amplían con lo dispuesto en las generales.</p>
+
+<h2 class="section">Cláusulas</h2>
+
+<div class="clause">
+  <p><span class="clause-title">PRIMERA.- OBJETO DEL CONTRATO.</span> - El contrato tiene por objeto la ejecución de las unidades de obra por parte del SUBCONTRATISTA que se especifican en el siguiente cuadro:</p>
+</div>
+
+{% if LINEAS %}
+<table class="materials-table">
+  <thead>
+    <tr>
+      <th class="col-med">Med.</th>
+      <th class="col-uds">Ud.</th>
+      <th class="col-desc">Descripción</th>
+      <th class="col-num">Precio</th>
+      <th class="col-num">Importe</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for fila in LINEAS %}
+    <tr>
+      <td class="col-med">{{ fila.med }}</td>
+      <td class="col-uds">{{ fila.uds }}</td>
+      <td class="col-desc">{{ fila.descripcion }}</td>
+      <td class="col-num">{{ fila.precio }}</td>
+      <td class="col-num">{{ fila.importe }}</td>
+    </tr>
+    {% endfor %}
+    {% if TOTAL_LINEAS %}
+    <tr class="total-row">
+      <td colspan="4" class="text-right bold">TOTAL</td>
+      <td class="col-num bold">{{ TOTAL_LINEAS }}</td>
+    </tr>
+    {% endif %}
+  </tbody>
+</table>
+{% else %}
+<div class="materials-box"></div>
+{% endif %}
+
+<p>El cuerpo escrito de este contrato prevalece sobre cualquier otro documento anexo al contrato. Las cláusulas incluidas en los presupuestos diferentes del precio cierto y determinado no tienen carácter contractual, debiendo regirse la relación contractual, en cuanto a elementos incluidos en el precio, cumplimento o incumplimiento de plazos, naturaleza de los plazos y al cumplimiento o incumplimiento de las prestaciones, por las cláusulas de este contrato, que manifiesta la voluntad última de las partes en el momento de la firma.</p>
+
+<p><strong>Se facturará lo realmente ejecutado en obra</strong></p>
+
+<div class="clause">
+  <p><span class="clause-title">SEGUNDA.- PRECIO.</span>- El precio total de la ejecución de las unidades de obra es de {{ PRECIO_NUMERO or '' }} ({{ PRECIO_LETRA or '' }})</p>
+  <p>El precio es el determinado en esta cláusula del contrato, configurándose conforme a lo dispuesto en las condiciones generales y, por lo tanto, no incrementándose por las fluctuaciones del precio de los materiales o por circunstancias de mercado, sin que tenga valor contractual ninguna cláusula del presupuesto adjunto al contrato modificación de precios y limitándose el contenido contractual del presupuesto a la expresión del precio cierto propuesto, que ha sido determinante para la adjudicación de la subcontrata y firma del contrato.</p>
+  <p>En el caso de que el SUBCONTRATISTA emita una certificación con unidades/partidas de obra que no se contemplen en este contrato, Construcciones Urdecon, S.A se reserva el derecho a considerar que la factura no es de su competencia y a no gestionar su comprobación y pago.</p>
+  <p>Por tanto, es necesario que antes de comenzar cualquier trabajo fuera de lo contemplado en este contrato, se elabore un ANEXO de cualquier modificación o ampliación del presente contrato.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">TERCERA.- FORMA DE PAGO Y MEDIOS DE PAGO</span></p>
+  <p>La forma de pago será mediante {{ FORMA_PAGO or '' }} con fecha emisión dentro del periodo legal establecido de pago a elegir indistintamente por el CONTRATISTA. La factura será considerada correcta para gestionar por parte de Construcciones Urdecon, S.A, siempre y cuando atienda y cumpla con lo establecido en la CLAUSULA NOVENA de las condiciones particulares del presente contrato.</p>
+  <p>La liquidación y pago de esta será desde la fecha de recepción de la factura en el departamento de contabilidad según lo establecido en la CLAUSULA NOVENA de las condiciones particulares del presente contrato, más los días necesarios para hacerlos coincidir con los días 22 del mes correspondiente al vencimiento. Los precios convenidos llevan incluidos los intereses y el coste por aplazamiento en el pago convenido, conforme a lo establecido en la legislación vigente.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">CUARTA.- PLAZO DE EJECUCIÓN DE LA OBRA</span></p>
+  <p>La obra se ejecutará en un plazo máximo de {{ DURACION_OBRA or '' }}</p>
+  <p>Fecha de inicio {{ FECHA_INICIO or '' }}</p>
+  <p>Fecha de terminación {{ FECHA_FIN or '' }}</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">QUINTA.- LIQUIDACIÓN DE LOS TRABAJOS</span></p>
+  {% if HITOS %}
+  <div class="milestones">
+  {% for line in HITOS.split('\n') %}
+    {% if line.strip() %}<div class="milestone-item">{{ line }}</div>{% endif %}
+  {% endfor %}
+  </div>
+  {% endif %}
+  <p>A la finalización de los trabajos realizados se les entregará la correspondiente Liquidación, cuyo texto se ajustará al modelo el cual se adjunta como ANEXO I. EL SUBCONTRATISTA deberá devolver firmado dicho documento junto con la factura ultima-liquidadora.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">SEXTA.- SEGURO DE RESPONSABILIDAD CIVIL</span></p>
+  <p>El SUBCONTRATISTA dispondrá de un seguro de responsabilidad civil a terceros en vigor durante toda la vida de este contrato para responder de los eventuales daños que su personal pudiere causar, por responsabilidad máxima de {{ SEGURO or '' }} €.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">SÉPTIMA.- TRABAJADORES EN OBRA</span></p>
+  <p>El SUBCONTRATISTA se compromete a mantener un número mínimo de trabajadores en obra para asegurar el cumplimiento del plazo de ejecución determinado y evitar el retraso de los trabajos y de cualquier hito intermedio.</p>
+  <p>Las partes fijan ese número mínimo de trabajadores en {{ NUM_TRAB or '' }} ({{ NUM_TRAB_LETRA or '' }}), sin perjuicio de que, por picos de trabajo, los mismos deban ser aumentados.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">OCTAVA.- RESPONSABLE DEL CONTRATO</span></p>
+  <p>A los efectos de la comunicación escrita que, para cualquier contingencia, de acuerdo con las condiciones generales, se requiera comunicación escrita del SUBCONTRATISTA y contestación expresa por escrito del CONTRATISTA, se designa como responsable del contrato a: {{ NOMBRE_GERENTE or '' }}. Toda comunicación no escrita, así como toda comunicación escrita no firmada por el responsable del contrato no vincula al CONTRATISTA.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">NOVENA. EMISIÓN DE CERTIFICACIÓN Y/O FACTURACIÓN MENSUAL</span></p>
+  <p>La certificación y/o facturación mensual de los trabajos realizados en la obra objeto de este contrato, deben cumplir con lo establecido en esa cláusula, de no cumplirlo, la factura no será gestionada por Construcciones Urdecon, S.A hasta que se cumpla en su totalidad:</p>
+  <ol>
+    <li>Las facturas se envían al correo <a href="mailto:facturas@urdecon.es">facturas@urdecon.es</a> de no recibirse en ese correo, la factura no será considerada recibida.</li>
+    <li>Las facturas siempre deben ir a origen, y descontar certificaciones anteriores.</li>
+    <li>Antes de emitir la factura de subcontratación, se debe firmar con el Jefe/a de Obra, una factura proforma (modelo oficial de Construcciones Urdecon, S.A) y aportarla firmada por el Jefe/a de Obra junto a la factura.</li>
+    <li>Las facturas deben llevar el número de expediente {{ NUMERO_OBRA or NUM_OBRA or '' }} (código de obra interno Urdecon).</li>
+    <li>La factura debe llevar aplica la retención por garantía especificada en el presente contrato.</li>
+    <li>La fecha de factura debe ser del mismo día en el que se recibe la factura por parte de Construcciones Urdecon, o como máximo de 3 días naturales antes.</li>
+  </ol>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">DÉCIMA. GARANTÍA</span></p>
+  <p>{{ GARANTIA or '' }}</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">UNDÉCIMA. Inversión del sujeto pasivo en el Impuesto sobre el Valor Añadido (IVA)</span></p>
+  <p>De conformidad con lo establecido en el artículo 84. Uno. 2º de la Ley 37/1992, de 28 de diciembre, del Impuesto sobre el Valor Añadido (Ley del IVA), las partes acuerdan que se aplicará el régimen del IVA que corresponda según la naturaleza de la obra objeto del presente contrato.</p>
+  <p>En virtud de esta normativa, ambas partes manifiestan expresamente que:</p>
+  <p><strong>Si no resulta de aplicación el régimen de Inversión del Sujeto Pasivo:</strong></p>
+  <ol>
+    <li>El SUBCONTRATISTA repercutirá el IVA en las facturas emitidas en relación con la ejecución de las obras detalladas en este contrato.</li>
+  </ol>
+  <p><strong>Si sí resulta de aplicación el régimen de Inversión del Sujeto Pasivo:</strong></p>
+  <ol>
+    <li>El SUBCONTRATISTA no repercutirá IVA en las facturas emitidas en relación con la ejecución de las obras detalladas en este contrato.</li>
+    <li>El CONTRATISTA será el responsable de autoliquidar el IVA correspondiente.</li>
+  </ol>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">DUODÉCIMA.- CONTRATO A DISTANCIA.</span></p>
+  <p>Suscribiéndose el presente documento a distancia, los firmantes convienen que, para los efectos de este contrato, el mismo pueda ser transmitido por vía electrónica (email o cualquier otro medio) a la otra parte, siendo intención de las partes que la copia facsímil (una copia, fotocopia o PDF) de cualquier firma impresa por una impresora del receptor será considerada una firma original teniendo por tanto la misma fuerza y efecto que una firma original, aun tratándose de firma electrónica.</p>
+  <p>El presente documento se entiende firmado, entrando en vigor, en el día de fecha indicado en el encabezamiento aun cuando las firmas, digitales o no, se plasmen en una fecha diferente al mismo por cuestiones de organización interna de cualquiera de las partes.</p>
+</div>
+
+<div class="signatures">
+  <div class="signatures-row">
+    <div class="signature-cell">
+      <div class="signature-role">El Contratista</div>
+      <div class="signature-company">CONSTRUCCIONES URDECON, S.A.</div>
+      <div class="signature-fdo">Fdo.: Enrique Fernández-Delgado Gavilá</div>
+    </div>
+    <div class="signature-cell">
+      <div class="signature-role">El Subcontratista</div>
+      <div class="signature-company">{{ RAZON_SOCIAL or '' }}</div>
+      <div class="signature-fdo">Fdo.: {{ NOMBRE_GERENTE or '' }}</div>
+    </div>
+  </div>
+</div>
+
+{# ──────────────────── CONDICIONES GENERALES ──────────────────── #}
+
+<div class="page-break"></div>
+
+<h1>SUBCONTRATACIÓN DE OBRA</h1>
+<h2 class="subtitle">Condiciones Generales</h2>
+
+<div class="clause">
+  <p><span class="clause-title">PRIMERA. Objeto del contrato.</span></p>
+  <p>1.1. Constituye el objeto del presente Contrato el total de ejecución de la unidad de obra especificada en las condiciones particulares, obligándose el SUBCONTRATISTA a realizar la misma, con estricta sujeción a las condiciones establecidas en este documento, en las condiciones particulares y en los anexos adjuntos, cumpliendo con todos los requisitos legales que resulten de aplicación y de conformidad con la lex artis y reglas de buena construcción. La ejecución del objeto del contrato se hace a riesgo y ventura del SUBCONTRATISTA.</p>
+  <p>1.2. El SUBCONTRATISTA declara haber recibido previo a la fecha de la firma de este contrato, el proyecto básico y demás documentación técnica necesaria, para revisarla y analizarla con objeto de realizar las mediciones y cálculos precisos y valorar en firme sus necesidades de material, personal, y restantes costes de ejecución a su cargo, así como, solicitar cuantas aclaraciones y confirmaciones a considera pertinentes con el fin de formular una oferta por precio cerrado no susceptible de revisión, salvo los supuestos expresamente estipulados en el contrato.</p>
+  <p>1.3. Las partes acuerdan expresamente que el presente contrato constituye el acuerdo total y definitivo entre ellas en relación con el objeto del mismo y las obras a las que el mismo se refiere, y deja sin efecto alguno y sustituye cualquier propuesta, oferta, presupuesto, comunicación o acuerdo previo, ya sea verbal o escrito, que haya sido intercambiado con anterioridad a la firma del presente. Ninguna de las partes podrá alegar la existencia de compromisos o condiciones distintas a las aquí recogidas, rigiéndose en todo lo relativo a estas obras por lo establecido en este contrato y quedando sin efecto de ninguna clase entre ellas cualquier documento anterior.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">SEGUNDA. Precio.</span></p>
+  <p>2.1. El precio de los trabajos contratados, salvo que en las condiciones particulares se disponga otra cosa, se configura como precio cerrado, siendo meramente informativo el número de unidades que se indican para cada uno de los conceptos relacionados.</p>
+  <p>2.2. En consecuencia, la variación en el número de unidades de obra realmente ejecutadas no comportará la modificación de los precios establecidos para cada unidad de obra.</p>
+  <p>2.3. En los precios indicados en las condiciones particulares o en su defecto en ANEXO adjunto, están incluidos por ser de cuenta del SUBCONTRATISTA, los siguientes extremos:</p>
+  <p>2.3.1. Suministro y transporte de los materiales a pie de tajo.</p>
+  <p>2.3.2. El personal necesario y cualificado para la perfecta ejecución y culminación de los trabajos de acuerdo con la normativa vigente en cada caso, con todos los gastos que ello aparejase, (impuestos, cargas, dietas, transportes, Seguros Sociales y/o particulares).</p>
+  <p>2.3.3. Maquinaria y/o utillaje a utilizar para el desarrollo de los trabajos contratados, incluso andamios necesarios para la ejecución de los mismos.</p>
+  <p>2.3.4. Permisos, legalizaciones, licencias y los gastos de tramitación necesarios para la puesta en funcionamiento de la instalación contratada o la ejecución de los trabajos a realizar.</p>
+  <p>2.3.5. Persona responsable a pie de obra, con facultades para recibir (de forma escrita u oral) y ejecutar con plena potestad las órdenes o indicaciones transmitidas por el CONTRATISTA, quien se reserva el derecho de admitir dicho responsable por causas justificadas.</p>
+  <p>2.3.6. Instalaciones y dependencias para personal y materiales.</p>
+  <p>2.3.7. Descarga, trasiego y elevación de los materiales necesarios y accesorios.</p>
+  <p>2.3.8. Replanteos, limpieza y retirada de escombros ocasionados por el SUBCONTRATISTA.</p>
+  <p>2.3.9. Materiales, mecanismos y medios, incluso los auxiliares de seguridad, necesarios para el cumplimiento por el SUBCONTRATISTA de sus obligaciones derivadas del Plan de Seguridad y Salud Laboral de la obra.</p>
+  <p>2.3.10. Costes indirectos.</p>
+  <p>2.4. Los precios reseñados en este contrato y en los anexos que eventualmente pudieran existir, son fijos y no están sujetos a revisión alguna. Los precios de las unidades de obra han sido calculados teniendo en cuenta las posibles fluctuaciones del mercado.</p>
+  <p>2.5. Respecto al IVA, la factura se incrementará con el IVA legalmente vigente en caso de que proceda su aplicación.</p>
+  <p>2.6. En caso de que el CONTRATISTA facilitara cualquier tipo de material, éste será descontado de la certificación de obra inmediatamente posterior al suministro.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">TERCERA: Plazo de ejecución y entrega de las obras</span></p>
+  <p>3.1. La fecha de inicio y de terminación de las obras se establece en las condiciones particulares {{ FIN_OBRA or '' }}. Dichas fechas se determinan por el programa o plan de obra, si lo hubiera y acompañara a este contrato como ANEXO, que es vinculante para el SUBCONTRATISTA en cuanto al ritmo de ejecución y la ordenación de medios y partidas.</p>
+  <p>3.2. El cumplimiento de los plazos pactados se considera un elemento esencial del presente contrato.</p>
+  <p>3.3. Si el desarrollo de las OBRAS sufriese paralización y retraso por causas ajenas al SUBCONTRATISTA, los plazos de entrega por parte del SUBCONTRATISTA de sus trabajos se ampliarán por el mismo tiempo que la demora sufrida. En ningún caso, el SUBCONTRATISTA tendrá derecho a indemnización por ningún concepto como consecuencia de la paralización no imputable a él.</p>
+  <p>3.4. Asimismo, el SUBCONTRATISTA declara conocer que las obras que se le encargan se desarrollan en una obra mucho más grande y en la que intervendrán otras empresas y oficios, por lo que se coordinará adecuadamente con todos ellos a fin de no interferir en su ejecución ni ocasionar retrasos. En este sentido, en caso de discrepancias serán vinculantes las instrucciones que sobre esta cuestión impartan tanto el CONTRATISTA como la Dirección Facultativa de las obras, obligándose el SUBCONTRATISTA a asumirlas.</p>
+  <p>3.5. El CONTRATISTA, se reserva el derecho de poder contratar otras empresas, si considera que el SUBCONTRATISTA no cumple con el ritmo fijado en el presente contrato de obra.</p>
+  <p>3.6. Cuando el SUBCONTRATISTA prevea de acuerdo con el ritmo de ejecución de los trabajos que la obra contratada se terminará en el plazo de 30 días, lo notificará por escrito al CONTRATISTA con expresión de la fecha en que debe procederse a la comprobación y medición de los trabajos a efectos de comprobar la obra por el contratista antes de realizar la recepción formal, ya sea parcial o total.</p>
+  <p>3.7. Si al procederse a la comprobación de los trabajos por parte del CONTRATISTA este considera que existen deficiencias que deben ser subsanadas por el SUBCONTRATISTA se hará constar esta circunstancia en el acta que se firme no teniendo lugar la citación de la PROPIEDAD para que concurra a realizar el trámite de recepción formal de la obra y por lo tanto permaneciendo la responsabilidad por los daños que pudiera sufrir la misma a cargo del SUBCONTRATISTA.</p>
+  <p>3.8. En este caso se seguirá el procedimiento establecido en la cláusula VIGÉSIMA sobre cumplimiento defectuoso e incumplimiento del contrato.</p>
+  <p>3.9. Si habiéndose otorgado plazo para la subsanación, se incumpliese, el CONTRATISTA tendrá derecho a resolver el contrato y realizar por sí mismo los trabajos o contratar con un tercero la realización de los trabajos pendientes para la subsanación cuyo importe será a cargo del SUBCONTRATISTA. Todo sin perjuicio de las penalizaciones que corresponda imponer al SUBCONTRATISTA previstas en la cláusula 4.2 por exceder el plazo de ejecución.</p>
+  <p>3.10. Subsanadas las deficiencias dentro del plazo o cuando no hubieran existido deficiencias, se procederá a realizar el trámite de recepción formal, momento en que el SUBCONTRATISTA emitirá su certificación final.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">CUARTA: Penalizaciones por retrasos en el cumplimento de los plazos</span></p>
+  <p>4.1. El SUBCONTRATISTA está obligado a cumplir el contrato dentro del plazo total fijado en las condiciones particulares para la realización del mismo. El SUBCONTRATISTA incurrirá en mora automáticamente sin necesidad de intimación previa por parte del CONTRATISTA desde el día siguiente al de terminación de los trabajos previsto en las condiciones particulares.</p>
+  <p>4.2. Son obligaciones esenciales para el contratista la de (i) ejecutar la totalidad de los trabajos contratados, y sus hitos intermedios, en los fijados en las condiciones particulares del presente contrato, y la de (ii) mantener el número mínimo de trabajadores en obra convenido en las cláusulas particulares, o aumentar el mínimo en caso de ser necesarios para ejecutar los trabajos contratos al ritmo requerido.</p>
+  <p>Salvo que en las condiciones particulares del contrato se pactase otro importe, el incumplimiento del plazo pactado de final de obra, o de los hitos intermedios, sin que medie una causa de fuerza mayor ajena al subcontratista se penalizará con el descuento en el precio de una cantidad fija diaria por importe de 0,5% del precio de la misma por cada día natural de retraso hasta la entrega, con conformidad del contratista, de la obra.</p>
+  <p>Salvo que en las condiciones particulares del contrato se pactase otro importe, el incumplimiento de la obligación de mantener en la obra el número mínimo de trabajadores, o de aumentar los mismos en caso de ser necesario, se penalizará con el descuento en el precio, por el mismo importe diario, que se aplica de forma proporcional al número de trabajadores ausentes; y ello sin perjuicio de las penalizaciones que pudieran proceder en caso de demora en el plazo indicado en el párrafo anterior.</p>
+  <p>Las dos anteriores penalizaciones han sido convenidas sin perjuicio del resto de consecuencias económicas prevista para el caso de resolución contractual.</p>
+  <p>4.3. Sin perjuicio en lo dispuesto en las cláusulas 3.7 a 3.10 respecto al fin de obra y subsanación de deficiencias, en el supuesto de que el CONTRATISTA, en cualquier momento anterior a la terminación de la obra, observe cualquier deficiencia, comunicará tal hecho al SUBCONTRATISTA que deberá proceder a subsanarla en el plazo de 3 días hábiles desde la recepción de dicha comunicación. Transcurrido dicho plazo, el CONTRATISTA podrá subsanar la deficiencia el mismo, siendo el coste cobrado al SUBCONTRATISTA de las facturas pendiente de pago o del importe de la garantía retenida si la hubiera.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">QUINTA: Forma de Pago</span></p>
+  <p>La forma de pago será pagare o confirming con fecha emisión dentro del periodo legal establecido de pago a elegir indistintamente por el CONTRATISTA, {{ FORMA_PAGO or '' }} desde la fecha de recepción de la factura en el departamento de contabilidad, cuyo correo es <a href="mailto:facturas@urdecon.es">facturas@urdecon.es</a>, más los necesarios para hacerlos coincidir con los días 22 inmediato posterior del mes correspondiente. Los precios convenidos llevan incluidos los intereses y el coste por aplazamiento en el pago convenido, conforme a lo establecido en la legislación vigente.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">SEXTA: Garantía</span></p>
+  <p>6.1. Una vez realizada por parte de la PROPIEDAD la recepción de las obras referidas en las condiciones particulares de este contrato se abrirá, a partir de la fecha del Acta de Recepción, un periodo de garantía de los trabajos efectuados por el SUBCONTRATISTA.</p>
+  <p>6.2. Salvo que se especifique otra garantía en las condiciones particulares, el CONTRATISTA retendrá 5% de cada factura que expida el SUBCONTRATISTA. Dicha garantía responderá igualmente, de la calidad de los trabajos realizados, de los materiales empleados, así como del cumplimiento de las restantes obligaciones que, según este contrato, corresponden al SUBCONTRATISTA, y del cumplimiento estricto del plazo pactado. Se devolverá al SUBCONTRATISTA, si no hubiese reclamación, transcurrido un año, salvo que la PROPIEDAD exija otro superior al CONTRATISTA, desde el día en que se lleve a cabo la terminación de la obra de ejecución de los trabajos, que se contará desde la fecha del acta de la recepción de obra.</p>
+  <p>6.3. En los casos en que se exija recepción provisional y definitiva por parte de la PROPIEDAD el período de garantía se considerará cumplido cuando se produzca esta última.</p>
+  <p>6.4. Una vez transcurrido el período de garantía pactado en este contrato, siempre que el SUBCONTRATISTA haya cumplido con todas sus obligaciones derivadas del presente contrato, el CONTRATISTA devolverá al SUBCONTRATISTA la retención, salvo que tuviera alguna reclamación pendiente contra el SUBCONTRATISTA, y siempre que el SUBCONTRATISTA acredite hallarse al corriente en el pago de salarios y cotizaciones a la Seguridad Social de su personal - y, en su caso, del de sus subcontratistas - que haya prestado sus servicios en la obra objeto del contrato; al corriente de pago de sus obligaciones tributarias y haya presentado toda la documentación que se le exige en este contrato. A falta de esta acreditación y documentación, no se devolverán las retenciones o garantías acordadas hasta que haya transcurrido el plazo legalmente establecido para poder reclamar al CONTRATISTA por estos conceptos.</p>
+  <p>Para su devolución, el SUBCONTRATISTA presentará al CONTRATISTA una relación detallando el importe de las retenciones que haya efectuado en cada una de las facturas presentadas anteriormente.</p>
+  <p>Dicha relación deberá ser entregada en <a href="mailto:facturas@urdecon.es">facturas@urdecon.es</a> como máximo, el día 5 del mes siguiente al día en que venza el período de garantía establecido en la cláusula 3.2., su devolución se efectuará en la misma forma indicada en la cláusula QUINTA de este contrato.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">SÉPTIMA: Coordinación de Actividades Empresariales (CAE)</span></p>
+  <p>7.1 En Construcciones Urdecon, S.A se realiza la coordinación de actividades empresariales a través de la plataforma Jeveal (<a href="https://cae.jeveal.com">https://cae.jeveal.com</a>) quedando obligado el subcontratista a aportar la documentación requerida antes del comienzo de los trabajos en la obra con un plazo mínimo de 48 horas, así como de mantener vigentes las mismas durante todo el periodo que dure su obra. Se le proporcionará acceso individualizado a dicha plataforma en el mismo momento que es aceptada su oferta.</p>
+  <p>7.2. El Subcontratista tiene el deber de mantener actualizada esta documentación en todo momento para asegurarse el acceso a la Obra y el posterior cobro de sus facturas.</p>
+  <p>7.3. El SUBCONTRATISTA se compromete a poner a disposición del CONTRATISTA y el PROMOTOR a través de la plataforma de gestión CAE de Jeveal la documentación requerida de empresa y trabajadores adjuntos a la obra. La no aportación de esta documentación exime al Contratista del pago de la factura hasta que aquella sea aportada.</p>
+  <p>7.4. Se realizará diariamente el control de acceso a Obra y, únicamente accederá a la misma aquella empresa o trabajador que tenga el acceso permitido en Jeveal.</p>
+  <p>EL SUBCONTRATISTA se compromete a facilitar a sus trabajadores o a los subcontratados por ellos el documento de acceso necesario e imprescindible para acceder a la obra siendo obligatorio su uso y registro en la misma para que URDECON reconozca el trabajo realizado por los mismos.</p>
+  <p>7.5. Asimismo, el SUBCONTRATISTA vendrá obligado a entregar a la finalización de las obras toda la documentación técnica y gráfica de las obras e instalaciones por él desarrolladas.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">OCTAVA: Nuevas Unidades de Obra</span></p>
+  <p>8.1. Si en el transcurso de la ejecución de las obras surgiese la necesidad de realizar nuevas unidades no contempladas, el SUBCONTRATISTA antes de proceder a la ejecución de cualquier trabajo relacionado con esas nuevas necesidades deberá comunicarlo por escrito al CONTRATISTA. La comunicación deberá de ir acompañada de informe sobre la naturaleza y motivo de las nuevas unidades necesarias que deberá tener el visto bueno del director de obra. Una vez recibida la comunicación, el CONTRATISTA se pondrá en contacto con el SUBCONTRATISTA por cualquier medio que deje constancia escrita, siendo preferente el uso de correo electrónico, burofax o carta certificada para estudiar el coste y el plazo que supondrían la ejecución de las nuevas unidades, así como solicitarle oferta. Toda respuesta o negociación posterior a la solicitud de oferta hecha al SUBCONTRATISTA deberá ser realizada por éste igualmente por cualquier medio que deje constancia escrita. Recibida la oferta por el CONTRATISTA se procederá a su aprobación o su rechazo que deberá constar por escrito firmado por el responsable del contrato señalado en las condiciones particulares.</p>
+  <p>A estos efectos, no se considera aprobación del CONTRATISTA la aceptación o firma de la oferta del CONTRATISTA por el jefe de obra.</p>
+  <p>8.2. A los efectos de oferta o comunicación vinculante sobre las negociaciones relativas a las nuevas unidades de obra, no se considera constancia escrita y no tendrán valor probatorio ni obligacional los documentos, cartas, emails, o cualquier otro tipo de soporte escrito en los que se haga referencia a cuestiones tratadas en una negociación verbal con el personal a pie de obra, incluido el jefe de obra, si no consta por escrito la existencia de dichas negociaciones y sus términos.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">NOVENA: Medios personales y materiales</span></p>
+  <p>9.1. El personal empleado por el SUBCONTRATISTA en cada uno de los cometidos deberá ser el adecuado en calidad y número al tipo y magnitud de los trabajos a realizar. Además de lo dispuesto en la cláusula 3.5., en cualquier momento el CONTRATISTA podrá ordenar la separación de la obra del personal que, a su juicio, no esté lo suficientemente capacitado para el trabajo a desarrollar o su actitud sea manifiestamente perjudicial para la OBRA, y podrá asimismo ordenar el incremento de personal necesario para la consecución de los plazos contratados sin que ello suponga incremento de precio alguno.</p>
+  <p>9.2. Todo el personal que intervenga en la realización de los trabajos dentro del recinto de la OBRA se atendrá en todo a los horarios, normas y costumbres existentes, así como a las instrucciones dadas por la dirección facultativa.</p>
+  <p>9.3 Sin perjuicio en lo dispuesto en la cláusula 7.3. sobre la incorporación de la documentación en la plataforma de gestión CAE de Jeveal, en el primer día hábil de cada mes, el SUBCONTRATISTA entregará al CONTRATISTA una lista firmada por aquél en el que se relacione de forma individualizada el personal del SUBCONTRATISTA que se encuentra en OBRA, indicando su categoría, número de afiliación a la Seguridad Social, fecha de alta con el SUBCONTRATISTA y fecha de incorporación a la OBRA y, en su caso, fecha de baja en la misma.</p>
+  <p>Cualquier alta o baja que a lo largo del mes se produzca deberá ser comunicada en el mismo día y por escrito al CONTRATISTA.</p>
+  <p>9.4. En el caso de altas en la obra que supongan altas en la plantilla del SUBCONTRATISTA, éste deberá presentar los correspondientes documentos que acrediten esta circunstancia debidamente sellados por la oficina gestora de la Seguridad Social.</p>
+  <p>9.5. Todo el personal que figure en las listas antedichas deberá estar dado de alta en la Seguridad Social y al corriente de pago de las cuotas. A fin de acreditar esta circunstancia, el SUBCONTRATISTA presentará al inicio de los trabajos una fotocopia de la última liquidación de Seguros Sociales, debidamente diligenciada por la entidad Gestora o Banco de Recaudación.</p>
+  <p>9.6. El SUBCONTRATISTA presentará al CONTRATISTA un certificado en vigor de estar dado de alta en el Impuesto de Actividades Económicas (I.A.E.) y del recibo de pago de la última prima devengada de la póliza de accidentes de trabajo, que cubra el importe de la indemnización extraordinaria que, por muerte, incapacidad permanente absoluta y gran invalidez venga establecida en los convenios colectivos provinciales de la construcción o que resulten aplicables.</p>
+  <p>Asimismo, y si lo requiriese el CONTRATISTA, pondrá a su disposición el libro de visitas de la Inspección de Trabajo.</p>
+  <p>9.7. Sin perjuicio del deber de coordinación necesaria entre CONTRATISTA el SUBCONTRATISTA para la efectiva prevención de riesgos laborales, el SUBCONTRATISTA deberá:</p>
+  <p>a. Tener integrada la actividad preventiva en su estructura empresarial.</p>
+  <p>b. Mantener la presencia efectiva de responsables de seguridad propios durante el tiempo que permanezcan sus trabajadores desarrollando la actividad contratada en la obra.</p>
+  <p>c. Vigilar el cumplimiento de las medidas incluidas en el Plan de Seguridad y Salud en el Trabajo y comprobar la eficacia de éstas con respecto a sus trabajadores.</p>
+  <p>d. Acreditar previamente al comienzo de los trabajos, y por escrito, la evaluación de riesgos y planificación de su actividad preventiva y el cumplimiento de las labores de formación e información con los trabajadores que vayan a prestar sus servicios en la obra. El SUBCONTRATISTA deberá tener en cuenta el contenido de la evaluación de riesgos del CONTRATISTA, en la evaluación de riesgos propia que debe efectuar.</p>
+  <p>e. Acreditar durante la realización de los trabajos que ha establecido los medios de coordinación necesarios entre las empresas concurrentes a los efectos de su comprobación por el CONTRATISTA.</p>
+  <p>f. En este sentido, EL CONTRATISTA podrá solicitar la adopción de las medidas de seguridad que considere conveniente en aquellos supuestos en los que, a su juicio, la falta de adopción de dichas medidas por el SUBCONTRATISTA pueda poner en peligro la vida o la seguridad de los trabajadores de éste, del CONTRATISTA, o de cualquiera de las empresas concurrentes. Si tras solicitarlo, el SUBCONTRATISTA no las adoptara, el CONTRATISTA podrá adoptar dichas medidas a costa del SUBCONTRATISTA mediante la retención del importe correspondiente en su facturación o podrá considerarlo directamente un incumplimiento de las obligaciones de seguridad y salud laboral. El incumplimiento por parte del SUBCONTRATISTA de sus obligaciones en materia de seguridad y salud laboral para con su personal dependiente, así como la inobservancia de la normativa vigente de seguridad de la maquinaria y equipos que intervengan en la ejecución del objeto del contrato, será causa inmediata de resolución del presente contrato.</p>
+  <p>9.8. La paralización de un trabajo por falta de medidas de seguridad imputables al SUBCONTRATISTA, no podrá ser nunca causa justificable para incumplimiento del plazo de entrega, ni encarecimiento en el precio contratado.</p>
+  <p>9.9. El SUBCONTRATISTA deberá designar en OBRA a un representante con carácter técnico, que coordine todas sus relaciones con el CONTRATISTA y las empresas concurrentes, atendiendo las instrucciones dictadas por éste. El incumplimiento por parte de este representante de tales instrucciones, no exime al SUBCONTRATISTA de su responsabilidad. De igual forma deberá designar un técnico en prevención que evalúe, vigile, actualice y coordine con el CONTRATISTA el seguimiento del Plan de Seguridad y Salud aprobado.</p>
+  <p>9.10. El SUBCONTRATISTA adoptará las medidas necesarias a fin de garantizar que sólo los trabajadores que hayan recibido formación e información suficiente y adecuada al tipo de trabajo que deban desarrollar puedan acceder a las zonas de riesgo grave y específico de la obra.</p>
+  <p>9.11 El SUBCONTRATISTA facilitará asimismo a los trabajadores que emplee en la obra, desde el inicio hasta su finalización, formación e información teórica y práctica suficiente y adecuada en materia de prevención de riesgos laborales.</p>
+  <p>9.12. El SUBCONTRATISTA velará para que sus trabajadores cumplan escrupulosamente las medidas de seguridad de obra y, especialmente, las de protección individual y colectiva.</p>
+  <p>9.13. El SUBCONTRATISTA deberá elaborar y conservar a disposición del CONTRATISTA y de la Autoridad Laboral la documentación detallada en el Art. 23 de la Ley 31/1995 de 8 noviembre.</p>
+  <p>9.14. En cumplimiento de lo establecido en el Real Decreto 39/1997 de 17 de enero por el que se aprueba el Reglamento de los Servicios de Prevención, el SUBCONTRATISTA deberá justificar al CONTRATISTA el tener constituido un servicio de prevención de riesgos laborales propio o bien haber concertado uno ajeno.</p>
+  <p>9.15. El incumplimiento de lo establecido en cualquiera de los apartados del presente pacto 12 autoriza al CONTRATISTA a la paralización del pago de toda la facturación pendiente de abono, en tanto se produzca la situación de incumplimiento, sin perjuicio de la facultad resolutoria prevista en el pacto 16.</p>
+  <p>9.16. El SUBCONTRATISTA autoriza al CONTRATISTA a que destine parte o toda su facturación pendiente de abono al pago de las obligaciones descritas en los diversos apartados del presente pacto 12 en el caso de que no hubiesen sido cumplidos por parte de SUBCONTRATISTA, recibiendo del CONTRATISTA la documentación que acredite tales pagos. El CONTRATISTA no podrá utilizar estas cantidades para proceder al pago de cualquier responsabilidad que le correspondiera al propio CONTRATISTA.</p>
+  <p>9.17. El SUBCONTRATISTA dispondrá de un seguro de responsabilidad civil a terceros en vigor durante toda la vida del presente contrato, para responder de los eventuales daños que su personal pudiere causar, por responsabilidad máxima establecida en las condiciones particulares.</p>
+  <p>9.18- Para asegurar el cumplimiento del plazo de ejecución determinado y evitar el retraso de los trabajos, el SUBCONTRATISTA se comprometerá a llevar a obra un mínimo de trabajadores indicado en las condiciones particulares.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">DÉCIMA: Calidad de los trabajos y documentación.</span></p>
+  <p>10.1. Los materiales empleados y los trabajos a desarrollar por el SUBCONTRATISTA deberán ajustarse a las mismas características y exigencias que se deriven del contrato firmado entre el CONTRATISTA y la PROPIEDAD, así como aquellos pliegos y disposiciones legales que fueran de aplicación a los trabajos contratados y a los materiales utilizados.</p>
+  <p>10.2. En general, y aunque expresamente no se indique en el apartado anterior, el SUBCONTRATISTA deberá realizar los trabajos contratados de acuerdo con los siguientes extremos, que declara conocer:</p>
+  <p>10.2.1. Planos del proyecto y/o los aprobados por la Dirección Facultativa de la Obra.</p>
+  <p>10.2.2. Memoria y pliego de condiciones del proyecto y/o los elementos aprobados con posterioridad por la Dirección Facultativa.</p>
+  <p>10.2.3. Normas Tecnológicas de la edificación, normativa española, comunitaria y demás normas vigentes relativas al trabajo contratado, aunque no estén expresadas en el proyecto, determinadas por la Dirección Facultativa.</p>
+  <p>10.2.4 Las especificaciones de compras que se adjuntan a este contrato.</p>
+  <p>10.3. A todos los efectos que puedan relacionarse con el presente contrato, el SUBCONTRATISTA tendrá como único y exclusivo interlocutor válido al CONTRATISTA.</p>
+  <p>10.4. El SUBCONTRATISTA acepta en la ejecución de los trabajos contratados cuantas obligaciones se deriven de órdenes dimanadas del CONTRATISTA. La recepción de los trabajos, de los materiales y el dictamen de su calidad estará de acuerdo con las especificaciones técnicas recogidas en el documento de especificaciones técnicas que se acompaña como ANEXO a este contrato y que pasa a formar parte integrante del mismo. Asimismo, quedará supeditado a la aprobación del personal técnico del CONTRATISTA. El incumplimiento de lo prevenido en este apartado por parte del SUBCONTRATISTA supondrá la paralización, total o parcial, de los trabajos y/o suministros.</p>
+  <p>10.5. Caso de requerirse ensayos, proyectos, estudios o presentación de muestras los gastos que éstos comporten serán de cuenta del SUBCONTRATISTA hasta un () por ciento del valor de los trabajos contratados. Si estos gastos se derivan de mala ejecución de los trabajos o calidad de los materiales, todos los gastos ocasionados serán por cuenta del SUBCONTRATISTA, sin limitación de cuantía.</p>
+  <p>10.6. Si los trabajos ya realizados ofrecieran, en todo o en parte, deficiencias incompatibles con la buena ejecución de su función o de la construcción de la OBRA en general, correrán por cuenta del SUBCONTRATISTA los gastos inherentes a reposiciones de material, correcciones, derribos o demoliciones y todas las indemnizaciones al CONTRATISTA por gastos y perjuicios que pudieran derivarse. Todos los costes producidos por esta contingencia le serán descontados al SUBCONTRATISTA de las facturas pendientes y de las retenciones o garantías, si procediese.</p>
+  <p>10.7. En el supuesto de que las facturas y retenciones pendientes de pago al SUBCONTRATISTAS sumadas a las garantías prestadas no cubriesen el importe de los gastos referidos en el apartado 11.6 anterior, el CONTRATISTA podrá ejercitar las acciones legales a que tenga derecho.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">UNDÉCIMA: Responsabilidad del Subcontratista</span></p>
+  <p>11.1. El SUBCONTRATISTA es responsable de cualquier accidente personal o daño que ocasione, incluidas responsabilidades civiles frente a terceros, como consecuencia de la ejecución de las unidades de obra, tanto en el emplazamiento de estas como en los lugares de origen y extracción de materiales y en los de paso y acopio.</p>
+  <p>El Subcontratista nombrará a un responsable que será el único interlocutor válido a lo largo de la ejecución de las obras.</p>
+  <p>11.2. El SUBCONTRATISTA se responsabiliza de las unidades de obra por él ejecutadas hasta que se lleve a cabo la recepción total o parcial de las mismas aplicándose lo dispuesto en las cláusulas TERCERA Y VIGÉSIMA en caso de ser necesario rehacer las unidades a juicio del director de obra.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">DECIMOSEGUNDA: Responsabilidad del Subcontratista en la maquinaria facilitada por Urdecon.</span></p>
+  <p>12.1. En caso de empleo de maquinaria facilitada por Urdecon, EL subcontratista se hará cargo de cualquier daño accidental producido sobre la misma y que no quede cubierto por el seguro de responsabilidad civil del proveedor de maquinaria, ya sea maquinaria de propiedad de Construcciones Urdecon o bien de una tercera empresa proveedora de alquiler.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">DECIMOTERCERA: Obligaciones en materia laboral</span></p>
+  <p>13.1. Además de las obligaciones especificas enumeradas en la cláusula NOVENA, El Subcontratista como empresario de todo el personal que utilice en la obra para ejecución de este contrato, responderá ante las autoridades y Tribunales de la correcta aplicación de la normativa vigente en la actualidad o que puedan ser dictadas durante la ejecución de los trabajos objeto del presente contrato, especialmente en materia Laboral, Seguridad Social, Prevención de riesgos laborales y Seguridad e higiene en el trabajo, exonerando expresamente al Contratista de toda responsabilidad por su incumplimiento.</p>
+  <p>13.2. En cualquier momento que se le exija, deberá acreditar al Contratista el cumplimiento de sus obligaciones en dichas materias y de forma específica, el hallarse al corriente en el pago de los salarios y de las cuotas de los seguros sociales.</p>
+  <p>13.3. Antes del inicio de los trabajos y posteriormente siempre que se considere conveniente, el contratista podrá solicitar que se aporte certificación a que alude el artículo 42.1 del vigente Estatuto de los Trabajadores a cuya vista de resultar descubiertos, podría ser causa suficiente para resolver por parte del Contratista el presente contrato o en su caso cualquier compromiso que con anterioridad hubiera podido contraerse con relación al objeto de este.</p>
+  <p>13.4. El Subcontratista autoriza al Contratista a que, sin más aviso, pueda abonar, con cargo a las facturas presentadas o por presentar, aquellas cantidades que adeude por cualquier concepto a su personal, así como las posibles deudas ante organismos oficiales derivadas del personal.</p>
+  <p>13.5 El incumplimiento de las obligaciones de carácter laboral, legales o contractuales, faculta al Contratista para resolver este contrato.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">DECIMOCUARTA: Normas en materia de prevención de riesgos laborales y de seguridad e higiene en el trabajo.</span></p>
+  <p>14.1. Además de las obligaciones especificas enumeradas en cláusula novena, el Subcontratista viene obligado a cumplir todas las disposiciones legales vigentes en cada momento en materia de prevención de riesgos laborales, seguridad e higiene en el trabajo y medicina de empresa, siendo responsable de la puesta en práctica de estas, así como de las consecuencias que se derivasen de su incumplimiento. Igualmente, los trabajadores del Subcontratista deberán cumplir las normas mencionadas en al apartado anterior y este deberá velar por que así sea.</p>
+  <p>14.2. Los equipos de protección individual usados por los trabajadores del Subcontratista deberán ajustarse a la legislación y normativa vigente, siendo esta responsable de la adecuada disposición y uso específico de los mismos para el trabajo a realizar por la totalidad de sus empleados.</p>
+  <p>14.3. El Subcontratista colocará, a su cargo, los medios de protección colectiva que sean precisos para la realización de los trabajos que le hayan sido encomendados, responsabilizándose de su colocación en el momento oportuno, de su mantenimiento y de su adecuado uso y conservación por parte de sus trabajadores.</p>
+  <p>14.4. El Subcontratista se compromete al correcto uso y conservación de las instalaciones de higiene y bienestar de la obra.</p>
+  <p>14.5. El Subcontratista deberá tener suscrita y en vigor una póliza de seguros que cubra a sus trabajadores de los riesgos de carácter personal (muerte y lesiones).</p>
+  <p>14.6. El subcontratista conoce el Plan de Seguridad de la Obra, haciendo suyo, y firmando junto a este contrato la parte del citado Plan de Seguridad que afecta a los trabajos encargados, dicha copia del Plan de Seguridad será entregada según la parte que le corresponda al subcontratista a la firma del contrato, obligándose a su cumplimiento. El subcontratista, no obstante, podrá hacer las sugerencias que estime oportunas sobre la parte del Plan de Seguridad que le afecte, firmándose en ese caso, un anexo al citado Plan.</p>
+  <p>14.7. El subcontratista queda informado de que el coordinador de Seguridad de la obra y máximo responsable en la misma en esta materia está especificado en el Plan de Seguridad, quien tiene plenas facultades de organización, incluida la paralización de los trabajos. Las responsabilidades derivadas del incumplimiento por parte del subcontratista de las normas de Seguridad o del Plan, darán lugar a la resolución del contrato y al resarcimiento de daños y perjuicios causados, autorizando a la empresa principal a retener de las cantidades pendientes, el importe a que pueda ascender dichas responsabilidades, tanto en cuanto a sanciones administrativas como a indemnizaciones por daños producidos y que puedan dar lugar a responsabilidad civil.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">DECIMOQUINTA.- Obligaciones Personales Y Aseguramiento De Riesgos</span></p>
+  <p>15.1. El SUBCONTRATISTA observará personalmente y hará observar a las personas de su dependencia toda la legislación y normativa vigente sobre Prevención de Riesgos Laborales y las Reglas de Seguridad y Salud en la Obra, asumiendo personalmente el riesgo de toda clase de daños que ellos mismos, o aquellos, pudieran sufrir en su persona o bienes, por su inobservancia o por cualquier otra causa de fuerza mayor.</p>
+  <p>15.2. Asimismo, como empleador de todo el personal que utilice para la ejecución de la obra subcontratada, responderá ante Autoridades, Organismos y Tribunales de la correcta aplicación de la Legislación vigente en material laboral, debiendo hallarse al corriente del pago de los salarios, de la afiliación y cotización de los seguros sociales vigentes o que se establezcan en el futuro y, en especial, en el de Accidentes de Trabajo, así como del cumplimiento de cualquier otra obligación en materia laboral.</p>
+  <p>15.3. El CONTRATISTA, con objeto de mantener un control del estricto cumplimiento de la legislación y normativa relativa a la Prevención de Riesgos Laborales, ejercerá una labor de vigilancia al SUBCONTRATISTA. Si en dicha labor, se detecta la comisión de alguna infracción a la Ley de Prevención de Riesgos Laborales, abrirá un procedimiento en el que, dando audiencia al SUBCONTRATISTA, podrá imponer, si procede, una sanción.</p>
+  <p>15.4. Se entenderá por reincidencia cuando una infracción del mismo tipo y calificación que la que motivó una sanción anterior se vuelva a cometer en un periodo inferior al año natural. En el caso de existir reincidencia, la cuantía de la sanción podrá duplicarse.</p>
+  <p>15.5 Cualquier infracción grave o muy grave cometida por el SUBCONTRATISTA podrá llevar aparejada la resolución inmediata del contrato.</p>
+  <p>15.6. La sanción económica impuesta por el CONTRATISTA al SUBCONTRATISTA podrá ser descontada de las facturas que hubiera pendientes de abonar al mismo, o en caso de no existir deuda o si esta fuera insuficiente para su compensación, será abonada directamente por el SUBCONTRATISTA, la totalidad o parte de la deuda que quedara pendiente.</p>
+  <p>15.7. El incumplimiento de la sanción por parte del SUBCONTRATISTA conllevará la resolución de la relación contractual concreta que dio origen a la infracción, facultativamente el CONTRATISTA podrá resolver cuantas otras relaciones contractuales mantenga con la empresa SUBCONTRATISTA.</p>
+  <p>15.8. El catálogo sancionador, por tanto, queda definido en la siguiente tabla:</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Infracción Leve</th>
+        <th>Infracción Grave</th>
+        <th>Infracción Muy Grave</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Cuantía Sanción: Hasta 300.- €.</td>
+        <td>de 1.500 a 3.000.- €.</td>
+        <td>de 3.000 a 6.000.- €</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">DECIMOSEXTA: Obligaciones Fiscales</span></p>
+  <p>16.1. A efectos de lo dispuesto en el Art. 43.1 f) de la Ley 58/2003, de 17 de Diciembre, General Tributaria, que establece la responsabilidad tributaria del contratista principal por las deudas tributarias del subcontratista, éste queda obligado a aportar a aquel, dentro de los tres días siguientes a la firma del presente contrato, un certificado especifico de encontrarse al corriente de sus obligaciones tributarias emitido a estos efectos por la Administración tributaria en la forma reglamentariamente establecida.</p>
+  <p>16.2. En tanto dicho certificado no se aporte por el subcontratista, quedará en suspenso la validez y efectos del presente contrato, constituyéndose en cumplimiento de dicha obligación como condición suspensiva.</p>
+  <p>16.3. Cada seis meses a contar desde la fecha de expedición del anterior certificado, y mientras subsista el presente contrato, el subcontratista queda obligado a presentar un nuevo certificado especifico de encontrarse al corriente de sus obligaciones tributarias, referido a dicho nuevo periodo semestral. En tanto dicho nuevo certificado no se aporte por el subcontratista, quedará en suspenso toda obligación del contratista principal de pagar o entregar, en su caso, los documentos representativos del pago aplazado, asumidos en el presente contrato.</p>
+  <p>16.4. Transcurridos tres días desde la fecha del presente contrato sin que el subcontratista entregue el certificado a que se refiere el párrafo anterior, con el contenido señalado, o tres días desde la expiración del plazo de seis meses desde la fecha de expedición del anterior certificado, caso de renovación de este, el contratista principal podrá declarar unilateralmente resuelto el presente contrato, sin que por dicha resolución haya lugar al pago de ningún tipo de indemnización a favor del subcontratista.</p>
+  <p>16.5. El subcontratista expresamente autoriza y apodera al contratista principal para que éste, en nombre y representación de aquel, pueda dirigirse a la Administración Tributaria y solicitar los certificados acreditativos de encontrarse al corriente de sus obligaciones tributarias. A tal fin, el subcontratista se compromete a suscribir los documentos de autorización que fueren necesarios o convenientes a favor de la persona que designe el contratista principal.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">DECIMOSÉPTIMA: Protección de datos y confidencialidad</span></p>
+  <p>17.1. En virtud del contrato, ambas entidades se ceden mutuamente datos personales de contacto, para los fines perseguidos por el CONTRATISTA, de conformidad con lo previsto en el art.19 de la Ley Orgánica 3/2018 de Protección de Datos de Carácter Personal y Garantía de los Derechos Digitales (LOPDYGDD):</p>
+  <ul>
+    <li>Datos incorporados en correos electrónicos para el contacto diario, incluidos los contactos de presidencia, y otros datos de contacto de representantes.</li>
+    <li>Contactos de redes sociales.</li>
+    <li>Datos necesarios para otras funciones relacionadas entre ambas entidades para la gestión del contrato.</li>
+    <li>Otros datos tratados en actas y reuniones.</li>
+  </ul>
+  <p>17.2. Con el objeto de regular la comunicación de datos entre las partes, estas suscriben el presente acuerdo de comunicación de datos personales para las finalidades fijadas en el propio contrato. En cumplimiento de lo previsto en el Reglamento (UE) 2016/679 (RGPD) y LOPDYGDD, ambas partes quedan informadas que los datos personales facilitados o proporcionados entre éstas como consecuencia de la firma del presente contrato, serán destinados a la gestión y ejecución acordada para el cumplimiento de los fines del mismo. Las partes en cuanto responsables o destinatarios, respectivamente de dichos datos declaran haber informado a los interesados de la finalidad del uso de la información recogida y de los demás aspectos relativos a los tratamientos de datos personales, en virtud de lo dispuesto en los artículos 13 y 14 del RGPD, así como facilitar los interesados el ejercicio de los derechos previstos en los artículos 15 a 22 del RGPD en la dirección de correo electrónico que más adelante se indica. Cada parte, en cuanto responsable o destinatario de los datos, además de asegurar que los datos personales comunicados se ajustan a los principios del art. 5 del RGPD y se tratan de acuerdo al art. 6 del mismo texto legal, deberán cumplir entre otros extremos, con lo dispuesto en el RGPD y LOPDYGDD, y en particular, cuando se tratarán datos personales estarán sujetos a lo previsto en los artículos 26, 28, 29 y 30 del RGPD, en lo relativo a:</p>
+  <p>17.2.1.- La realización del correspondiente registro de actividades de tratamientos de carácter personal, con los requisitos establecidos al efecto, y que mantendrán a disposición de la AEPD, siendo la finalidad del tratamiento la adecuada gestión de la relación contractual, consintiendo expresamente el tratamiento de los mismos para las finalidades informadas. En caso de facilitarse datos personales de trabajadores o de terceras personas, ambas partes asumen el compromiso de informar a éstos de los extremos referidos, solicitando el consentimiento expreso de los mismos, salvo que existiese otra base legal para ello y facilitando en su caso a los mismo el derecho de información previsto en los artículos 13 y 14 del RGPD, al igual que el ejercicio de los derechos del artículo 15 a 22 del RGPD a la dirección de correo electrónico más adelante indicada.</p>
+  <p>17.2.2.- El acceso por ambas partes a los soportes de datos de carácter personal no tendrá la consideración legal de comunicación o cesión de datos, sino en su caso, de simple acceso a los mismos como elemento necesario para la realización del objeto contractualmente establecido.</p>
+  <p>17.2.3.- Con respecto a las obligaciones de las partes en los supuestos de corresponsabilidad en el tratamiento de los datos personales a que se refiere el art. 29 de la LOPDYGDD en relación con el art. 26.1 del RGPD, si se comunicaran entre las partes datos personales de los que fueran responsables del tratamiento cada una de las mismas, se realizarán atendiendo a las actividades que efectivamente desarrolle cada uno de los corresponsables del tratamiento, que fijarán los medios y los fines de los respectivos tratamientos de datos, sirviendo la presente cláusula de documento a que se refiere el citado precepto, y debiendo dar cumplimiento a lo previsto en el citado RGPD y LOPDYGDD, sin perjuicio de la posibilidad de ser cumplimentado, en su caso, con el anexo correspondiente.</p>
+  <p>17.2.4.- En el supuesto de que cualquiera de las partes, trasmitiera a la otra datos de carácter personal para su tratamiento en nombre y por cuenta de la otra, se aplicará lo previsto en el art. 28.3 del RGPD, con el cumplimiento de las obligaciones previstas tanto para responsable como encargado del tratamiento en la citada norma, así como de lo dispuesto en el art. 33 de la LOPDYGDD y lo previsto en el art.32 del RGPD para las garantías y medidas de seguridad necesarias para garantizar un nivel de seguridad adecuado al riesgo, a los efectos de asegurar la confidencialidad, disponibilidad, integridad, autenticidad y trazabilidad de los datos. El presente documento tendrá la consideración de clausulado de encargado de tratamiento, sin perjuicio de que se pudiera anexar por las partes las condiciones que expresamente pactaran para el tratamiento. Así mismo, en el supuesto de tratamiento de datos personales en virtud de lo previsto en el art. 28.3 del RGPD, las partes en cuanto responsables o encargados de los datos, respectivamente quedan obligadas a facilitar a los interesados tanto el derecho de información, como el ejercicio de los correspondientes derechos de acceso, rectificación, cancelación, limitación, portabilidad, oposición y olvido de los datos facilitados, pudiéndose dirigir los interesados a los correspondientes domicilios establecidos en el contrato, así como a las direcciones de correo electrónico que se indican. En caso de facilitar datos de terceras personas, que no estuvieran amparadas por alguna de las bases legitimadoras, ambas partes asumen el compromiso de informar a éstos de los extremos referidos, con carácter previo al tratamiento o la cesión de los datos. Así mismo en todo lo no pactado para el supuesto de clausulado de encargado, se seguirán las instrucciones del responsable de acuerdo con lo previsto en el art. 29 del RGPD, y las obligaciones previstas legalmente para el encargado.</p>
+  <p>17.2.5.- En el momento de la finalización del contrato ambas partes destruirán o devolverán los datos de carácter personal, y destruirán y borrarán o inutilizarán sin posible impresión futura todos los soportes en los que hubiesen sido insertados estos datos sin conservar copia alguna de los mismos, salvo la necesidad de conservación de los mismos de forma bloqueada, por existir obligaciones legales y por el plazo previstos para ello o con arreglo a los criterios que se hubieren establecido.</p>
+  <p>17.2.6.- Cada una de las partes se compromete a no difundir, bajo ningún aspecto, las informaciones pertenecientes a la otra parte a las que haya podido tener acceso en el desarrollo del objeto del contrato, así como al cumplimiento de lo previsto en el art. 5 de la LOPDYGDD para responsables, encargados y personal de las respectivas entidades que trataran datos de carácter personal. La Parte que reciba información confidencial de la otra Parte no podrá revelarla, salvo cuando tal revelación obedezca a un requerimiento o petición formal por parte de una autoridad judicial o cualquier otra autoridad gubernamental, siempre que previamente se le haya notificado tal petición a la Parte que la haya revelado y se le haya dado a la misma, de ser posible, la oportunidad de oponerse a la necesidad de dicha revelación y/o se le haya permitido solicitar una orden protectora o medida cautelar al objeto de que la Información Confidencial revelada en virtud de esa petición se utilice única y exclusivamente para el objeto que se dictó en dicho requerimiento legal.</p>
+  <p>17.2.7.- Toda notificación entre las partes se realizará a los respectivos domicilios indicados en los encabezamientos del contrato. Cualquier notificación que se efectúe entre las partes se hará por escrito y será entregada de cualquier forma que certifique la recepción por la parte notificada.</p>
+  <p>17.2.8.- La no exigencia por cualquiera de las partes del contrato de sus derechos, de conformidad con lo establecido en el mismo, no se considerará que constituye una renuncia de dichos derechos para el futuro.</p>
+  <p>17.2.9.- Si alguno o algunos de los apartados o estipulaciones del contrato fuesen declarados nulos o inaplicables, dichos apartados o estipulaciones se considerarán excluidos del mismo, sin que impliquen la nulidad de todo el resto del presente clausulado.</p>
+  <p>17.2.10.- El contrato en lo relativo a la protección de datos personales, se regirá por la normativa de protección de datos aplicable en España.</p>
+  <p>17.2.11.- El presente clausulado por el que se regula lo relativo a la protección de datos de carácter personal, entrará en vigor en los términos fijados en el contrato de que se trata que vincula a las partes intervinientes.</p>
+  <p>17.2.12. A los efectos previstos en este documento, la dirección de correo es: <a href="mailto:urdecon@urdecon.es">urdecon@urdecon.es</a></p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">DECIMOOCTAVA: Obligaciones Medioambientales</span></p>
+  <p>18.1. Será obligación del subcontratista la correcta segregación de los residuos, acopiándolos en aquellos recipientes o contenedores dispuestos para ello en la obra. Así como, está obligado a su correcta gestión, entregando los mismos a un gestor autorizado para cada tipo de residuo. Debiendo facilitar al departamento de administración de Construcciones Urdecon S.A. (<a href="mailto:facturas@urdecon.es">facturas@urdecon.es</a>) los albaranes de entrega de los residuos emitidos por el gestor, donde deben quedar identificados correctamente, los datos del transportista, empresa gestora, destino de los residuos, el tipo de residuo entregado y fecha de recogida.</p>
+  <p>18.2. El subcontratista está obligado a presentar antes de iniciar los trabajos, en aquellos casos en que este utilice maquinaria y/o vehículos, ya sea propio o en alquiler, las revisiones (ITV) y libro de mantenimiento de dichas máquinas y/o vehículos y el seguro.</p>
+  <p>18.3. Con respecto a la maquinaria y equipos que utilice en el desarrollo y cumplimiento de lo establecido en el presente contrato el SUBCONTRATISTA manifiesta y se compromete en firme y de manera irrevocable:</p>
+  <p>18.3.1. Puede demostrar, como único responsable, la adecuada gestión de los Residuos Peligrosos generados por el mantenimiento de su maquinaria, conforme a los requisitos legales establecidos en cada momento.</p>
+  <p>18.3.2. Que los diversos componentes que puedan configurar la maquinaria y los equipos cumplan con todos los requisitos exigidos por la legislación medioambiental aplicable, así como con toda la normativa interna del CONTRATISTA en materia medioambiental, y en especial los relativos a emisión de ruidos, gases u otros productos nocivos o perjudiciales para el medio ambiente.</p>
+  <p>18.3.3. Que la maquinaria y equipos superen favorablemente en tiempo y forma los controles y revisiones administrativos preceptivos y exigibles que sean de aplicación, y aquellos otros requisitos que pueda exigir el CONTRATISTA para el buen fin de este contrato, y que dicha maquinaria y equipos cumplen como mínimo los planes de mantenimiento y conservación que se exijan en virtud de su documentación o en cumplimiento de las indicaciones del fabricante, distribuidor o servicio técnico.</p>
+  <p>18.4. Los subcontratistas están obligados a cumplir todas las indicaciones establecidas por Construcciones Urdecon S.A. sobre control de aspectos ambientales establecidas en su sistema de gestión medioambiental basado en la norma UNE – EN – ISO – 14001, así como cualquier memoria adicional de control ambiental que afecte sus trabajos dentro del centro de trabajo para los cuales ha sido subcontratado.</p>
+  <p>18.5. El SUBCONTRATISTA se hará cargo de la gestión de cualquier tipo de residuo generado por la ejecución de los trabajos teniendo en cuenta la normativa legal vigente, en especial la Ley 7/2022, de 8 de abril, de residuos y suelos contaminados para una economía circular y disposiciones de desarrollo y concordantes.</p>
+  <p>18.6. Para el caso de que no lo hiciera, el CONTRATISTA, por sí o por tercero, procederá a realizarlo a cargo del SUBCONTRATISTA. El SUBCONTRATISTA y el personal de él dependiente por virtud de cualquier vínculo jurídico, su equipamiento y maquinaria, cumplirá con toda la normativa interna del CONTRATISTA en materia de medio ambiente. Dicha normativa se encuentra a disposición del SUBCONTRATISTA en la página web del CONTRATISTA (o bien el CONTRATISTA se compromete a facilitar al SUBCONTRATISTA la Normativa interna que en materia de medio ambiente vaya implantando y le sea de aplicación), declarando en este acto haber tomado razón suficiente de dicha normativa a todos los efectos.</p>
+  <p>18.7. El subcontratista facilitara a sus trabajadores acceso y tiempo a las charlas de sensibilización ambiental promovidas por Construcciones Urdecon, S.A.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">DECIMONOVENA: EVALUACIÓN Y SEGUIMIENTO DE PROVEEDORES</span></p>
+  <p>19.1. Construcciones Urdecon, S.A. en cumplimiento de los requisitos establecidos en la norma ISO 9001, informa al Proveedor que, como parte de su sistema de gestión de la calidad, será objeto de evaluación y seguimiento continuo para garantizar el cumplimiento de los estándares de calidad, servicio y otros requisitos aplicables.</p>
+  <p>19.2. La evaluación del Proveedor se realizará de manera periódica con base en criterios como:</p>
+  <ul>
+    <li>Calidad de los productos/servicios suministrados.</li>
+    <li>Cumplimiento de plazos de entrega y condiciones contractuales.</li>
+    <li>Gestión de incidencias y reclamaciones.</li>
+    <li>Compromiso con los requisitos ambientales conforme a ISO 14001, en caso de ser aplicable.</li>
+  </ul>
+  <p>19.3. El resultado de dichas evaluaciones podrá determinar la continuidad de la relación comercial o la necesidad de implementar acciones correctivas. El Proveedor acepta expresamente someterse a este proceso de evaluación y colaborar con Construcciones Urdecon, S.A. en la mejora continua del desempeño.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">VIGÉSIMA: Subcontratación</span></p>
+  <p>20.1. El Subcontratista no podrá subcontratar, ceder o transmitir a terceros por título alguno, la ejecución de unidades objeto de este contrato, sin autorización expresa y escrita por parte del Contratista.</p>
+  <p>20.2. Las condiciones y documentos exigibles a las subcontrataciones del SUBCONTRATISTA serán las mismas que al SUBCONTRATISTA principal.</p>
+  <p>20.3. El CONTRATISTA podrá retener, del pago de las facturas del SUBCONTRATISTA, cualquier cantidad que éste pudiera tener pendiente con el segundo SUBCONTRATISTA.</p>
+  <p>20.4. Si el segundo SUBCONTRATISTA incumpliese alguna de sus obligaciones laborales, fiscales o mercantiles, el CONTRATISTA podrá directamente hacerse cargo de ellas, bien con cargo a las facturas y certificaciones del SUBCONTRATISTA y que se encuentren pendientes de pago, o bien con cargo a las retenciones practicadas. Todo ello sin perjuicio de las acciones legales procedentes cuando tales cantidades no fuesen suficientes para cubrir el importe satisfecho en su lugar por el CONTRATISTA.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">VIGESIMAPRIMERA: Paralización de los trabajos.</span></p>
+  <p>21.1. Si la paralización tuviese su origen en causas imputables al Subcontratista, el Contratista podrá rescindir el presente contrato por simple notificación, haciendo suyas en concepto de indemnización cuantas cantidades tuviese retenidas o pendientes de pago en ese momento.</p>
+  <p>21.2. Si por circunstancias especiales, la paralización de los trabajos, temporal o definitiva fuese imputable al Contratista, lo notificará expresamente el Subcontratista liquidándose las facturas pendientes de los trabajos realmente ejecutados.</p>
+  <p>21.3. La paralización temporal por causas imputables al CONTRATISTA no dará derecho al SUBCONTRATISTA a recibir indemnización por ningún concepto. Si podrá dar lugar a la ampliación del plazo en tiempo igual al que haya durado la paralización.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">VIGÉSIMASEGUNDA: Modificaciones contractuales.</span></p>
+  <p>22.1. Cualquier modificación de las condiciones contractuales deberá ser convenida de mutuo acuerdo entre las partes firmantes, debiendo constar la misma por escrito.</p>
+  <p>22.2. En caso de requerirse algún trabajo de los no incluidos en el objeto del contrato. Será indispensable, tanto para su ejecución como para el abono de su importe, que previamente se hayan aprobado cantidades y precios mediante anexo al presente contrato.</p>
+  <p>22.3. El procedimiento para la aprobación de cualquier modificación contractual por parte del CONTRATISTA se regirá por lo dispuesto en la cláusula OCTAVA para las nuevas unidades de obra.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">VIGÉSIMATERCERA: Cumplimiento defectuoso. Incumplimiento del contrato. Resolución.</span></p>
+  <p>23.1. Cuando el SUBCONTRATISTA hubiera ejecutado la obra objeto del contrato pero esta no fuere aprobada por el CONTRATISTA o por la PROPIEDAD, se podrá optar por, o bien conceder nuevo plazo imponiendo una penalidad del 5% fijo del precio sin IVA del presente contrato, o bien considerarlo incumplimiento contractual y resolver el contrato pudiendo ejecutar el CONTRATISTA de nuevo la prestación objeto del contrato a costa del SUBCONTRATISTA o bien encargar dicha ejecución a un tercero pero a costa del SUBCONTRATISTA, reteniendo el pago del precio de las facturas pendientes de pago, y, si no alcanzara, reclamando el importe al SUBCONTRATISTA. Así mismo, se podrá imponer adicionalmente las penalidades por demora si el cumplimiento defectuoso y su posterior cumplimiento implican un retraso en el plazo de entrega.</p>
+  <p>23.2. El incumplimiento de lo establecido en cualquiera de los pactos del presente contrato autoriza al CONTRATISTA a la paralización del pago de toda la facturación pendiente de abono, mientras subsista la situación de incumplimiento.</p>
+  <p>23.3. Es causa de resolución de este contrato el incumplimiento de cualquiera de sus cláusulas.</p>
+  <p>En los casos imputables al SUBCONTRATISTA, el CONTRATISTA hará suyas en concepto de cláusula penal, las cantidades pendientes de abono, las garantías y retenciones que pudieran existir y el importe de la producción pendiente de facturar, pudiendo asimismo reclamar cuantos daños y perjuicios le haya ocasionado dicho incumplimiento. En caso de tener que contratar a otro SUBCONTRATISTA para que finalice los trabajos objeto de este contrato o parte de ellos, además de la pérdida de las garantías y retenciones, facturación pendiente de pago y producción pendiente de facturar, el CONTRATISTA hace expresa reserva de reclamar al SUBCONTRATISTA, los incrementos de precios o coste extra que le haya supuesto la contratación del nuevo SUBCONTRATISTA, en cuanto superen el importe de la mencionada facturación pendiente de pago y producción pendiente de facturar.</p>
+  <p>Todo ello, sin menoscabo del derecho del CONTRATISTA a reclamar la correspondiente indemnización por los mayores daños y perjuicios que se le hubieren causado como consecuencia del incumplimiento del SUBCONTRATISTA, si superan el importe de las antedichas cantidades.</p>
+  <p>23.4. Si se tratara de un incumplimiento parcial de la ejecución de la obra, además de retener las cantidades pendientes de abono, garantías y retenciones hasta que se cumpla totalmente el objeto del contrato, se impondrá una penalidad del 5% del precio sin IVA del presente contrato y si fuera necesario contratar a otro subcontratista para que termine la prestación parcialmente cumplida, será de aplicación lo dispuesto en el primer párrafo la cláusula 20.3 relativo a los efectos de la contratación de un nuevo subcontratista.</p>
+  <p>23.5. Si por cualquier causa se resolviera o suspendiera indefinidamente el contrato de la OBRA entre la PROPIEDAD y el CONTRATISTA, el presente contrato quedará resuelto y cancelado, procediéndose a la liquidación de los trabajos efectuados por el SUBCONTRATISTA dentro del recinto de la OBRA, sin que el SUBCONTRATISTA tenga derecho a cantidad alguna distinta de la derivada de la liquidación física de tales trabajos.</p>
+  <p>23.6. Son causas, asimismo, de resolución inmediata de contrato:</p>
+  <p>23.6.1. La muerte o incapacidad sobrevenida del SUBCONTRATISTA, cuando éste sea persona física.</p>
+  <p>23.6.2. El rechazo por la Dirección Facultativa o de la PROPIEDAD, de los trabajos efectuados por el SUBCONTRATISTA.</p>
+  <p>23.6.3. La falsificación de cualquier documento de los reseñados y exigidos en los pactos precedentes respecto del SUBCONTRATISTA, de los trabajadores propios del SUBCONTRATISTA o los de la empresa subcontratada por éste.</p>
+  <p>23.6.4. La falta de inscripción en el Registro de Empresas Acreditadas del SUBCONTRATISTA o de sus SUBCONTRATISTAS.</p>
+  <p>23.6.5 La declaración de concurso de acreedores o insolvencia del SUBCONTRATISTA.</p>
+  <p>23.6.6 El mutuo acuerdo entre el SUBCONTRATISTA y el CONTRATISTA.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">VIGESIMOCUARTA: Metodología de gestión.</span></p>
+  <p>24.1. EL CONTRATISTA convocará al subcontratista a las reuniones de obra que a su criterio sean necesarias para el buen funcionamiento de las Obras, estando obligado el subcontratista a acudir a las mismas. A dichas reuniones podrá asistir, además del CONTRATISTA, el propietario y la Dirección Facultativa, obligándose el subcontratista a resolver cualquier duda o aclaración que se plantee o se solicite en dichas reuniones.</p>
+  <p>24.2. En las reuniones se analizará el progreso de las Obras, cualquier problema que afecte o pueda afectar a su desarrollo y, en particular, al calendario de las Obras. EL CONTRATISTA podrá aplicar el sistema Lean Construcción en las Obras de Construcción. Lean Construcción consiste en una filosofía de gestión que persigue la excelencia en la Construcción a través de un proceso de mejora continua en la empresa, minimizando o eliminando todas aquellas actividades y transacciones que no añaden valor, a través de la optimización de recursos y la maximización de la entrega de valor al cliente, para diseñar y producir a un menor coste, con mayor calidad, más seguridad y con plazos de entrega más cortos, dentro de un marco ecológico con el entorno.</p>
+  <p>24.3 EL SUBCONTRATISTA deberá participar de forma activa en las reuniones Lean Construcción que pueda proponer EL CONTRATISTA. El sistema Lean Construcción permite generar registros en base a la responsabilidad de cada una de las partes en caso de desviación del coste, calidad, o plazo sobre la planificación inicial prevista. Estos registros podrán ser documentados para evaluar las posibles penalizaciones a las que el contrato se refiera.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">VIGÉSIMOQUINTA: Notificaciones</span></p>
+  <p>25.1. <strong>Forma.</strong> Todas las comunicaciones y notificaciones que deban realizarse las Partes en virtud del presente Acuerdo deberán efectuarse por escrito y mediante:</p>
+  <p>(i) entrega en mano con confirmación escrita de la recepción por la otra Parte;</p>
+  <p>(ii) por conducto notarial;</p>
+  <p>(iii) por burofax; o</p>
+  <p>(iv) por correo postal o electrónico, así como por cualquier otro medio, siempre que en todos estos casos se deje constancia de su debida recepción por el destinatario o destinatarios.</p>
+  <p><strong>Domicilio y destinatarios.</strong> Las comunicaciones y notificaciones entre las Partes deberán ser remitidas a los domicilios y a la atención de las personas que se indican en el encabezamiento del presente Acuerdo.</p>
+  <p>25.2. <strong>Cambios.</strong> Cualquier modificación de los domicilios o personas a efectos de notificaciones deberá ser inmediatamente comunicada al resto de Partes de acuerdo con las reglas establecidas en esta cláusula. En tanto una Parte no haya recibido notificación de tales cambios, las notificaciones que ésta realice conforme a esas reglas de acuerdo con los datos originarios se entenderán correctamente efectuadas.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">VIGÉSIMOSEXTA: Responsabilidad administrativa</span></p>
+  <p>26.1. Las partes declaran expresamente que ninguno de los pactos de este contrato pretende modificar el sistema de responsabilidades administrativas contenido en el artículo 42.3 del vigente Texto Refundido de la Ley de Infracciones y Sanciones del Orden Social.</p>
+  <p>26.2. En su consecuencia el CONTRATISTA manifiesta expresamente que, en aquellos supuestos en que se extienda la responsabilidad solidaria conforme a lo previsto en el artículo 42.3 del vigente Texto Refundido de la Ley de Infracciones y Sanciones del Orden Social, no podrá efectuar cargos, retenciones, descuentos o compensaciones de cualquier índole, sobre la facturación devengada a favor del SUBCONTRATISTA, tendentes a eludir, reducir o anular dicha responsabilidad.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">VIGESIMOSÉPTIMA: Fuero</span></p>
+  <p>27.1. Para cuantas cuestiones litigiosas pudieran suscitarse como consecuencia del otorgamiento y ejecución de este contrato, ambas partes se someten a la jurisdicción de los juzgados y tribunales de la ciudad de Murcia, con renuncia a cualquier otro fuero que pudiera corresponderles.</p>
+  <p>27.2. Y en prueba de aceptación y conformidad con todas las manifestaciones y pactos contenidos en este contrato, firman las partes el presente documento por duplicado en el lugar y fecha arriba indicados.</p>
+</div>
+
+<div class="signatures">
+  <div class="signatures-row">
+    <div class="signature-cell">
+      <div class="signature-role">El Contratista</div>
+      <div class="signature-company">CONSTRUCCIONES URDECON, S.A.</div>
+      <div class="signature-fdo">Fdo.: Enrique Fernández-Delgado Gavilá</div>
+    </div>
+    <div class="signature-cell">
+      <div class="signature-role">El Subcontratista</div>
+      <div class="signature-company">{{ RAZON_SOCIAL or '' }}</div>
+      <div class="signature-fdo">Fdo.: {{ NOMBRE_GERENTE or '' }}</div>
+    </div>
+  </div>
+</div>
+
+{# ──────────────────── ANEXO I — LIQUIDACIÓN ──────────────────── #}
+
+<div class="page-break"></div>
+
+<h1>Anexo 1</h1>
+
+<p class="date-line">En Murcia a ____________________________ (FECHA ÚLTIMA FACTURA)</p>
+
+<h2 class="section">Reunidos</h2>
+
+<p>D. Enrique Fernández-Delgado Gavilá, mayor de edad, con D.N.I. 34828322-C, en nombre y representación de CONSTRUCCIONES URDECON, S.A. con domicilio en Puente Tocinos (Murcia), C/ Mayor, 55 – Polígono Industrial Camposol y C.I.F. A-30032205.</p>
+
+<p>De otra {{ RAZON_SOCIAL or '_________________________________________' }} (El Subcontratista)</p>
+
+<h2 class="section">Exponen</h2>
+
+<p>Que las partes formalizaron en fecha (CONTRATO MATRIZ) _____________ el contrato para la obra {{ NOMBRE_OBRA or '_______________' }} al que las partes se remiten y dan por reproducido en aras de la brevedad.</p>
+
+<p>Que el subcontratista ha llevado a cabo la prestación pactada en los términos convenidos, salvo vicios ocultos y responsabilidades que pudieran surgir dentro del período de garantía, habiendo percibido el precio pactado por ello, por lo que las partes suscriben la presente</p>
+
+<h2 class="section">Liquidación</h2>
+
+<p>CONSTRUCCIONES URDECON, S.A. declara recibir a su satisfacción la prestación contratada, salvo vicios ocultos y responsabilidades que pudieran surgir dentro del período de garantía.</p>
+
+<p>(El Subcontratista) declara haber recibido la totalidad del precio convenido por la prestación contratada, declarando no tener nada más que reclamar a CONSTRUCCIONES URDECON, S.A. por ningún concepto.</p>
+
+<p>Lo que suscriben por duplicado en el lugar y fecha arriba indicados.</p>
+
+<div class="signatures">
+  <div class="signatures-row">
+    <div class="signature-cell">
+      <div class="signature-role">El Contratista</div>
+      <div class="signature-company">CONSTRUCCIONES URDECON, S.A.</div>
+      <div class="signature-fdo">Fdo.: Enrique Fernández-Delgado Gavilá</div>
+    </div>
+    <div class="signature-cell">
+      <div class="signature-role">El Subcontratista</div>
+      <div class="signature-company">{{ RAZON_SOCIAL or '' }}</div>
+      <div class="signature-fdo">Fdo.: {{ NOMBRE_GERENTE or '' }}</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

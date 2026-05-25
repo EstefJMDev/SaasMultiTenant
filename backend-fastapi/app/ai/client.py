@@ -1,0 +1,43 @@
+"""AI client shim. Delegates to app.ai.ai_client.runner."""
+
+from app.ai.ai_client.runner import (
+    OllamaClient,
+    build_extraction_meta,
+    extract_json_block,
+    normalize_comparative_json,
+    normalize_invoice_json,
+    _as_str_or_none,
+    _find_supplier_name_by_tax_id,
+    _find_supplier_name_in_header,
+    _looks_like_bad_supplier_name,
+    _looks_like_customer,
+    _normalize_amount,
+    _normalize_currency,
+    _normalize_date,
+    _normalize_tax_id,
+    _regex_due_date,
+    _regex_invoice_number,
+    _trim_comparative_text,
+    _trim_invoice_text,
+)
+
+__all__ = [
+    "OllamaClient",
+    "extract_json_block",
+    "build_extraction_meta",
+    "normalize_invoice_json",
+    "normalize_comparative_json",
+    "_looks_like_bad_supplier_name",
+    "_looks_like_customer",
+    "_as_str_or_none",
+    "_normalize_tax_id",
+    "_normalize_date",
+    "_normalize_amount",
+    "_normalize_currency",
+    "_trim_invoice_text",
+    "_trim_comparative_text",
+    "_regex_invoice_number",
+    "_regex_due_date",
+    "_find_supplier_name_by_tax_id",
+    "_find_supplier_name_in_header",
+]

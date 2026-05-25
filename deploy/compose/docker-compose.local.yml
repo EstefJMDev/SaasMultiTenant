@@ -1,0 +1,13 @@
+# Override local opcional.
+# Mantiene puertos clásicos 5433, 6379, 8000, 5173, 3000, 5555 vía deploy/env/compose.local.env.
+# Úsalo si quieres añadir ajustes solo de desarrollo sin tocar docker-compose.yml.
+
+services:
+  backend-fastapi:
+    user: "0:0"
+
+  celery-worker:
+    user: "0:0"
+
+  celery-beat:
+    user: "0:0"
