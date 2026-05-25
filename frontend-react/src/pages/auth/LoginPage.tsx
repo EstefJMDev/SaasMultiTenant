@@ -97,19 +97,12 @@ export const LoginPage: React.FC = () => {
       >
         <Stack spacing={6} align="center" mb={4}>
           <Image
-            src="/logo-urdecon.svg"
+            src="/logo_urdecon.png"
             alt={t("auth.logoAlt")}
-            boxSize="56px"
+            boxSize="100px"
             objectFit="contain"
           />
-          <Box textAlign="center">
-            <Heading size="lg" mb={1}>
-              {t("auth.login.title")}
-            </Heading>
-            <Text fontSize="sm" color={subtitleColor}>
-              {t("auth.login.subtitle")}
-            </Text>
-          </Box>
+          <br/>
         </Stack>
 
         <form onSubmit={handleSubmit}>

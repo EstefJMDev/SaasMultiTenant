@@ -3,7 +3,17 @@
 # Úsalo si quieres añadir ajustes solo de desarrollo sin tocar docker-compose.yml.
 
 services:
+  db:
+    ports:
+      - "${DB_HOST_PORT:-5433}:5432"
+
+  redis:
+    ports:
+      - "${REDIS_HOST_PORT:-6379}:6379"
+
   backend-fastapi:
+    ports:
+      - "${BACKEND_HOST_PORT:-8000}:8000"
     user: "0:0"
 
   celery-worker:
@@ -11,3 +21,15 @@ services:
 
   celery-beat:
     user: "0:0"
+
+  flower:
+    ports:
+      - "${FLOWER_HOST_PORT:-5555}:5555"
+
+  agent-system:
+    ports:
+      - "${AGENT_HOST_PORT:-3000}:3000"
+
+  frontend-react:
+    ports:
+      - "${FRONTEND_HOST_PORT:-5173}:5173"

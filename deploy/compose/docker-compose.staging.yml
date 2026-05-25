@@ -1,0 +1,12 @@
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    env_file:
+      - ${CLOUDFLARED_ENV_FILE}
+    command: tunnel --no-autoupdate run
+    depends_on:
+      backend-fastapi:
+        condition: service_healthy
+      frontend-react:
+        condition: service_started

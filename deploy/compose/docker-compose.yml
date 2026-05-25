@@ -7,8 +7,8 @@ services:
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
       TZ: Europe/Madrid
-    ports:
-      - "${DB_HOST_PORT:-5433}:5432"
+    expose:
+      - "5432"
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:
@@ -21,8 +21,8 @@ services:
   redis:
     image: redis:7
     restart: unless-stopped
-    ports:
-      - "${REDIS_HOST_PORT:-6379}:6379"
+    expose:
+      - "6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -40,7 +40,7 @@ services:
         INSTALL_LIBREOFFICE: "1"
     restart: unless-stopped
     env_file:
-      - ../env/backend.local.env
+      - ${BACKEND_ENV_FILE:-../env/backend.local.env}
     environment:
       DATABASE_URL: postgresql+psycopg2://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@db:5432/${DB_NAME:-saas}
       REDIS_URL: redis://redis:6379/0
@@ -67,21 +67,21 @@ services:
       timeout: 3s
       retries: 20
       start_period: 10s
-    ports:
-      - "${BACKEND_HOST_PORT:-8000}:8000"
+    expose:
+      - "8000"
     volumes:
-      - ../data/invoices:/data/invoices
-      - ../data/contracts:/data/contracts
-      - ../data/logos:/app/data/logos
-      - ../data/avatars:/app/data/avatars
-      - ../data/project-docs:/app/data/project-docs
+      - ${APP_INVOICES_DIR:-../data/invoices}:/data/invoices
+      - ${APP_CONTRACTS_DIR:-../data/contracts}:/data/contracts
+      - ${APP_LOGOS_DIR:-../data/logos}:/app/data/logos
+      - ${APP_AVATARS_DIR:-../data/avatars}:/app/data/avatars
+      - ${APP_PROJECT_DOCS_DIR:-../data/project-docs}:/app/data/project-docs
 
   celery-worker:
     image: plataforma-backend-fastapi:local
     pull_policy: never
     restart: unless-stopped
     env_file:
-      - ../env/backend.local.env
+      - ${BACKEND_ENV_FILE:-../env/backend.local.env}
     environment:
       DATABASE_URL: postgresql+psycopg2://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@db:5432/${DB_NAME:-saas}
       REDIS_URL: redis://redis:6379/0
@@ -108,15 +108,18 @@ services:
         "--concurrency=1",
       ]
     volumes:
-      - ../data/invoices:/data/invoices
-      - ../data/contracts:/data/contracts
+      - ${APP_INVOICES_DIR:-../data/invoices}:/data/invoices
+      - ${APP_CONTRACTS_DIR:-../data/contracts}:/data/contracts
+      - ${APP_LOGOS_DIR:-../data/logos}:/app/data/logos
+      - ${APP_AVATARS_DIR:-../data/avatars}:/app/data/avatars
+      - ${APP_PROJECT_DOCS_DIR:-../data/project-docs}:/app/data/project-docs
 
   celery-beat:
     image: plataforma-backend-fastapi:local
     pull_policy: never
     restart: unless-stopped
     env_file:
-      - ../env/backend.local.env
+      - ${BACKEND_ENV_FILE:-../env/backend.local.env}
     environment:
       DATABASE_URL: postgresql+psycopg2://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@db:5432/${DB_NAME:-saas}
       REDIS_URL: redis://redis:6379/0
@@ -142,8 +145,11 @@ services:
         "--loglevel=INFO",
       ]
     volumes:
-      - ../data/invoices:/data/invoices
-      - ../data/contracts:/data/contracts
+      - ${APP_INVOICES_DIR:-../data/invoices}:/data/invoices
+      - ${APP_CONTRACTS_DIR:-../data/contracts}:/data/contracts
+      - ${APP_LOGOS_DIR:-../data/logos}:/app/data/logos
+      - ${APP_AVATARS_DIR:-../data/avatars}:/app/data/avatars
+      - ${APP_PROJECT_DOCS_DIR:-../data/project-docs}:/app/data/project-docs
 
   flower:
     image: mher/flower:2.0.1
@@ -162,8 +168,8 @@ services:
         "--port=5555",
         "--basic-auth=${FLOWER_BASIC_AUTH:-admin:changeme}",
       ]
-    ports:
-      - "${FLOWER_HOST_PORT:-5555}:5555"
+    expose:
+      - "5555"
 
   agent-system:
     image: plataforma-agent-system:local
@@ -208,8 +214,8 @@ services:
       timeout: 5s
       retries: 10
       start_period: 15s
-    ports:
-      - "${AGENT_HOST_PORT:-3000}:3000"
+    expose:
+      - "3000"
 
   frontend-react:
     image: plataforma-frontend-react:local
@@ -218,10 +224,9 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     env_file:
-      - ../env/frontend.local.env
+      - ${FRONTEND_ENV_FILE:-../env/frontend.local.env}
     environment:
       VITE_API_URL: /api
-      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
       VITE_API_PROXY_TARGET: http://backend-fastapi:8000
       VITE_AGENT_PROXY_TARGET: http://agent-system:3000
       TZ: Europe/Madrid
@@ -230,8 +235,8 @@ services:
         condition: service_healthy
       agent-system:
         condition: service_started
-    ports:
-      - "${FRONTEND_HOST_PORT:-5173}:5173"
+    expose:
+      - "5173"
 
 volumes:
   db_data:

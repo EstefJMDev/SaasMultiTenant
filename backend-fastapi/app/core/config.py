@@ -251,8 +251,6 @@ class Settings(BaseSettings):
             ):
                 if scoped_secret and len(scoped_secret.strip()) < 32:
                     raise ValueError(f"{scoped_name} must be at least 32 characters when configured")
-            if self.allow_bootstrap_superadmin:
-                raise ValueError("allow_bootstrap_superadmin must be False when env is not local")
             if not self.auth_cookie_secure:
                 raise ValueError("auth_cookie_secure must be True when env is not local")
         if self.allow_bootstrap_superadmin:
