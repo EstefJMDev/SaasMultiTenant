@@ -2115,7 +2115,9 @@ export const ContractsModule: React.FC<ContractsModuleProps> = ({
               currentRoleName={roleName}
               currentUserId={currentUser?.id ?? null}
               canApproveComparativeByPosition={
-                !isJefeObraPosition && Boolean(currentUser?.can_approve_comparative)
+                !isJefeObraPosition &&
+                (Boolean(currentUser?.can_approve_comparative) ||
+                  Boolean(currentUser?.full_approver))
               }
               canRejectComparativeByPosition={Boolean(currentUser?.can_reject_comparative)}
               canCreateComparativeByPosition={Boolean(currentUser?.can_create_comparative)}
@@ -2274,6 +2276,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 }) => {
   const cardBg = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.700");
+  const footerBg = useColorModeValue("gray.50", "gray.900");
   const { data: currentUser } = useCurrentUser();
   const normalizedRole = String(currentUser?.role_name ?? "").trim().toLowerCase();
   const canManageDraftContracts = Boolean(
@@ -8998,6 +9001,7 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
   );
   const cardBg = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.700");
+  const footerBg = useColorModeValue("gray.50", "gray.900");
 
   const formatAmountEs = (value: number): string =>
     new Intl.NumberFormat("es-ES", {
@@ -10936,7 +10940,7 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
           borderTop="1px solid"
           borderColor={borderColor}
           justify="flex-end"
-          bg={useColorModeValue("gray.50", "gray.900")}
+          bg={footerBg}
         >
           <HStack spacing={3}>
             <Button

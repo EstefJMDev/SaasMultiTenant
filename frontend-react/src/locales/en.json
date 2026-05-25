@@ -48,7 +48,7 @@
   "auth": {
     "logoAlt": "Urdecon logo",
     "login": {
-      "title": "Access URDECON INNOVA",
+      "title": "Access URDECON",
       "subtitle": "Sign in with your corporate account",
       "email": "Email",
       "password": "Password",
@@ -166,7 +166,7 @@
   "layout": {
     "brand": {
       "logoAlt": "Urdecon logo",
-      "title": "URDECON INNOVA",
+      "title": "URDECON",
       "subtitle": "Corporate SaaS platform"
     },
     "sections": {

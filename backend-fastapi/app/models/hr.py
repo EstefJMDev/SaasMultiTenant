@@ -204,6 +204,7 @@ class Position(SQLModel, table=True):
     can_approve_comparative: bool = Field(default=False)
     can_reject_comparative: bool = Field(default=False)
     can_view_all_comparatives: bool = Field(default=False)
+    full_approver: bool = Field(default=False)
 
     can_view_contract: bool = Field(default=False)
     can_edit_contract: bool = Field(default=False)

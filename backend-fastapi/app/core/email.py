@@ -168,10 +168,10 @@ def send_user_invitation_email(
         return
 
     platform_name = (settings.platform_display_name or "Plataforma").strip()
-    subject = f"Invitación a la plataforma {platform_name} ({tenant_name})"
+    subject = f"Invitación {platform_name} ({tenant_name})"
     body = (
         f"Hola,\n\n"
-        f"Has sido invitado a la plataforma {platform_name} como '{role_name}' "
+        f"Has sido invitado a la {platform_name} como '{role_name}' "
         f"en el tenant '{tenant_name}'.\n\n"
         f"Para completar tu alta y definir tu contraseña, entra en:\n"
         f"{accept_url}\n\n"

@@ -229,6 +229,7 @@ class PositionBase(BaseModel):
     can_delete_comparative: bool = False
     can_approve_comparative: bool = False
     can_reject_comparative: bool = False
+    full_approver: bool = False
     can_view_contract: bool = False
     can_edit_contract: bool = False
     can_regenerate_contract: bool = False
@@ -255,6 +256,7 @@ class PositionUpdate(BaseModel):
     can_delete_comparative: Optional[bool] = None
     can_approve_comparative: Optional[bool] = None
     can_reject_comparative: Optional[bool] = None
+    full_approver: Optional[bool] = None
     can_view_contract: Optional[bool] = None
     can_edit_contract: Optional[bool] = None
     can_regenerate_contract: Optional[bool] = None

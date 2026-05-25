@@ -35,6 +35,7 @@ from app.platform.contracts_core.permissions import (
     can_view_contract,
     can_write_comparative,
     ensure_tenant_access,
+    has_full_approver_permission,
 )
 from app.domains.procurement.contracts import crud as contract_crud
 from app.domains.procurement.contracts import validators as contract_validators
@@ -918,6 +919,8 @@ def _ensure_user_can_manage_comparative(
     tenant_id: int,
     user: User,
 ) -> None:
+    if has_full_approver_permission(session, user):
+        return
     if can_view_all_comparatives(session, user) or can_view_all_contracts(session, user):
         return
     branch = _resolve_comparative_branch(session, user)
@@ -1022,7 +1025,12 @@ def approve_comparative(
     comment: Optional[str],
 ) -> Contract:
     ensure_tenant_access(user, tenant_id)
-    if not (can_approve_comparative(session, user) or can_approve_contract(session, user)):
+    has_full_approver = has_full_approver_permission(session, user)
+    if not (
+        has_full_approver
+        or can_approve_comparative(session, user)
+        or can_approve_contract(session, user)
+    ):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Sin permisos")
 
     contract = contract_crud._get_contract_or_404(session, contract_id, tenant_id)
@@ -1032,7 +1040,7 @@ def approve_comparative(
             detail="El comparativo no está pendiente de aprobación de gerencia.",
         )
 
-    if not can_approve_comparative(session, user):
+    if (not has_full_approver) and (not can_approve_comparative(session, user)):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Solo Gerencia y Director Técnico pueden aprobar el comparativo.",
@@ -1046,21 +1054,28 @@ def approve_comparative(
     )
     branch = _resolve_comparative_branch(session, user)
     try:
-        contract_crud._upsert_approval(
-            session,
-            contract=contract,
-            department=branch,
-            status=ApprovalStatus.APPROVED,
-            decided_by_id=user.id,
-            comment=comment,
-            scope=ApprovalScope.COMPARATIVE,
+        branches_to_approve = (
+            (ContractDepartment.OBRA, ContractDepartment.GERENCIA)
+            if has_full_approver
+            else (branch,)
         )
+        for branch_to_approve in branches_to_approve:
+            contract_crud._upsert_approval(
+                session,
+                contract=contract,
+                department=branch_to_approve,
+                status=ApprovalStatus.APPROVED,
+                decided_by_id=user.id,
+                comment=comment,
+                scope=ApprovalScope.COMPARATIVE,
+            )
     except Exception as exc:
         session.rollback()
         logger.exception(
-            "Fallo registrando approval comparativo contract_id=%s branch=%s: %s",
+            "Fallo registrando approval comparativo contract_id=%s branch=%s full_approver=%s: %s",
             contract.id,
             branch.value,
+            has_full_approver,
             exc,
         )
         raise HTTPException(
@@ -1076,12 +1091,13 @@ def approve_comparative(
         and gerencia_status == ApprovalStatus.APPROVED
     )
     logger.info(
-        "approve_comparative contract_id=%s decided_branch=%s obra=%s gerencia=%s both_approved=%s",
+        "approve_comparative contract_id=%s decided_branch=%s obra=%s gerencia=%s both_approved=%s full_approver=%s",
         contract.id,
         branch.value,
         obra_status,
         gerencia_status,
         both_approved,
+        has_full_approver,
     )
 
     contract.updated_at = datetime.now(timezone.utc)
@@ -1101,11 +1117,19 @@ def approve_comparative(
         contract_id=contract.id,
         user_id=user.id,
         event_type="comparative.approved" if both_approved else "comparative.partial_approved",
-        payload={"branch": branch.value, "both_approved": both_approved},
+        payload={
+            "branch": branch.value,
+            "both_approved": both_approved,
+            "full_approver": has_full_approver,
+        },
     )
 
     # Notificar al creador en cada aprobación parcial, indicando quién aprobó.
-    approver_label = "Director Técnico" if branch == ContractDepartment.OBRA else "Gerencia"
+    approver_label = (
+        "Aprobador completo"
+        if has_full_approver
+        else ("Director Técnico" if branch == ContractDepartment.OBRA else "Gerencia")
+    )
     send_contract_notification(
         session,
         event=ContractNotificationEvent.COMPARATIVE_APPROVED,

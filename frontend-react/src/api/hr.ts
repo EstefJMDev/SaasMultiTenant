@@ -99,6 +99,7 @@ export interface Position {
   can_approve_comparative: boolean;
   can_reject_comparative: boolean;
   can_view_all_comparatives: boolean;
+  full_approver: boolean;
   can_view_contract?: boolean;
   can_edit_contract?: boolean;
   can_regenerate_contract?: boolean;
@@ -122,6 +123,7 @@ export interface PositionCreateInput {
   can_delete_comparative?: boolean;
   can_approve_comparative?: boolean;
   can_reject_comparative?: boolean;
+  full_approver?: boolean;
   can_view_contract?: boolean;
   can_edit_contract?: boolean;
   can_regenerate_contract?: boolean;
@@ -144,6 +146,7 @@ export interface PositionUpdateInput {
   can_delete_comparative?: boolean;
   can_approve_comparative?: boolean;
   can_reject_comparative?: boolean;
+  full_approver?: boolean;
   can_view_contract?: boolean;
   can_edit_contract?: boolean;
   can_regenerate_contract?: boolean;

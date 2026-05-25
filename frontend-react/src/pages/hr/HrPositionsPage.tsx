@@ -61,6 +61,7 @@ interface PositionFormState {
   can_delete_comparative: boolean;
   can_approve_comparative: boolean;
   can_reject_comparative: boolean;
+  full_approver: boolean;
   can_view_contract: boolean;
   can_edit_contract: boolean;
   can_regenerate_contract: boolean;
@@ -83,6 +84,7 @@ const defaultForm: PositionFormState = {
   can_delete_comparative: false,
   can_approve_comparative: false,
   can_reject_comparative: false,
+  full_approver: false,
   can_view_contract: false,
   can_edit_contract: false,
   can_regenerate_contract: false,
@@ -105,6 +107,7 @@ const toCreateInput = (form: PositionFormState): PositionCreateInput => ({
   can_delete_comparative: form.can_delete_comparative,
   can_approve_comparative: form.can_approve_comparative,
   can_reject_comparative: form.can_reject_comparative,
+  full_approver: form.full_approver,
   can_view_contract: form.can_view_contract,
   can_edit_contract: form.can_edit_contract,
   can_regenerate_contract: form.can_regenerate_contract,
@@ -127,6 +130,7 @@ const fromPosition = (p: Position): PositionFormState => ({
   can_delete_comparative: !!p.can_delete_comparative,
   can_approve_comparative: !!p.can_approve_comparative,
   can_reject_comparative: !!p.can_reject_comparative,
+  full_approver: !!p.full_approver,
   can_view_contract: !!p.can_view_contract,
   can_edit_contract: !!p.can_edit_contract,
   can_regenerate_contract: !!p.can_regenerate_contract,
@@ -144,7 +148,8 @@ type ComparativeCap =
   | "can_edit_comparative"
   | "can_delete_comparative"
   | "can_approve_comparative"
-  | "can_reject_comparative";
+  | "can_reject_comparative"
+  | "full_approver";
 
 type ContractCap =
   | "can_view_contract"
@@ -165,6 +170,7 @@ const POSITION_CAPS: { name: ComparativeCap; label: string }[] = [
   { name: "can_delete_comparative", label: "Eliminar comparativo" },
   { name: "can_approve_comparative", label: "Aprobar comparativo" },
   { name: "can_reject_comparative", label: "Rechazar comparativo" },
+  { name: "full_approver", label: "Full approver" },
 ];
 
 const POSITION_CONTRACT_CAPS: { name: ContractCap; label: string }[] = [
@@ -454,6 +460,7 @@ export const HrPositionsPage: React.FC = () => {
                         can_delete_comparative: false,
                         can_approve_comparative: false,
                         can_reject_comparative: false,
+                        full_approver: false,
                         can_view_contract: Boolean(newDept?.can_view_contract),
                         can_edit_contract: Boolean(newDept?.can_edit_contract),
                         can_regenerate_contract: Boolean(

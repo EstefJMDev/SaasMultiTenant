@@ -6,9 +6,7 @@ from fastapi import HTTPException
 
 from sqlmodel import Session, select
 
-from app.models.permission import Permission
 from app.models.role import Role
-from app.models.role_permission import RolePermission
 from app.models.user import User
 from app.models.hr import Department, EmployeeDepartment, EmployeeProfile, Position
 from app.platform.contracts_core.models import ContractDepartment
@@ -40,22 +38,8 @@ def ensure_tenant_access(user: User, tenant_id: int) -> None:
         )
 
 
-def _user_has_permission(session: Session, user: User, code: str) -> bool:
-    if user.is_super_admin:
-        return True
-    if not user.role_id:
-        return False
-    statement = (
-        select(Permission.code)
-        .join(RolePermission, RolePermission.permission_id == Permission.id)
-        .where(RolePermission.role_id == user.role_id)
-    )
-    permissions = {
-        row if isinstance(row, str) else row[0]
-        for row in session.exec(statement).all()
-        if row
-    }
-    return code in permissions
+def has_full_approver_permission(session: Session, user: User) -> bool:
+    return _has_comparative_cap(session, user, "full_approver")
 
 
 def _is_tenant_admin(session: Session, user: User) -> bool:
