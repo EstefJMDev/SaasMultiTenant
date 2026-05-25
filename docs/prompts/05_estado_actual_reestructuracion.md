@@ -6,7 +6,7 @@ Fecha de corte: 25/05/2026
 - Fase 1: COMPLETADA y validada en ejecucion real.
 - Fase 2: COMPLETADA.
 - Fase 2.1 (correccion tenant_id): COMPLETADA.
-- Fase 3: IMPLEMENTADA en codigo.
+- Fase 3: IMPLEMENTADA en codigo e INTEGRADA en endpoints legacy de contratos.
 - Fase 4: PENDIENTE.
 
 ## Fase 1 validada
@@ -38,13 +38,24 @@ Fecha de corte: 25/05/2026
 - Servicio nuevo con crear, editar, obtener, listar, enviar a aprobacion, aprobar, rechazar, devolver a cambios y stub de generacion de contrato.
 - Compilacion sintactica validada con `py_compile`.
 
+## Fase 3.1 integrada en flujo actual (contratos legacy)
+- Archivo integrado: `backend-fastapi/app/domains/procurement/contracts/_internal/comparatives_service.py`.
+- No se creo router `/api/v2/comparativos`.
+- No se tocaron rutas existentes de contratos ni frontend.
+- Endpoints existentes (`submit/approve/reject/return`) usan `comparativos_v2` cuando existe vinculo:
+- `contract.comparative_data[\"_v2\"][\"comparativo_id\"]`.
+- `submit` crea comparativo v2 solo si hay datos suficientes; si no, fallback legacy controlado.
+- `save_draft` se mantiene legacy y sincroniza a v2 solo si ya existe vinculacion.
+- Se mantiene retorno `Contract` legacy para compatibilidad con `contracts_service.build_read(...)`.
+- Se valida mapeo de estados v2 -> `ComparativeStatus` legacy.
+
 ## Riesgo abierto actual
 - La validacion de import/runtime del backend sigue condicionada por una incompatibilidad existente del entorno `sqlmodel`/`pydantic` al cargar modelos, ajena al modulo `comparativos_v2`.
 
 ## Pendiente
 - Router nuevo del flujo.
 - Tests del flujo.
-- Validacion funcional real del servicio nuevo.
+- Validacion funcional real en runtime del adaptador legacy -> comparativos_v2.
 - Generacion de contrato desde comparativo aprobado (fase posterior).
 
 ## No tocado aun

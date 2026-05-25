@@ -30,10 +30,14 @@
 - No migrar legacy todavia.
 - No tocar frontend todavia.
 - Fase 3 implementada en modulo aislado `comparativos_v2`.
+- Integracion por adaptador temporal en `contracts/_internal/comparatives_service.py`.
+- Sin crear router nuevo `/api/v2/comparativos` en esta fase.
+- Los endpoints legacy de contratos se mantienen y devuelven `Contract` legacy.
 
 ## Estado de fases
 - Fase 1: completada/validada.
 - Fase 2: completada.
 - Fase 2.1: completada (tenant_id).
-- Fase 3: implementada en codigo, pendiente de integracion/validacion funcional.
+- Fase 3: implementada e integrada bajo endpoints legacy de contratos.
+- Fase 3.1 (adaptador): implementada, pendiente validacion funcional runtime.
 - Fase 4: no iniciada.

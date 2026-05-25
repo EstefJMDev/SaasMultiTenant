@@ -8,7 +8,8 @@ Separar el flujo nuevo de comparativos del legacy `contract`, manteniendo conviv
 - Fase 2: completada (`comparativos_schemas.py` creado con schemas create/update/read del flujo nuevo).
 - Fase 2.1: completada (alineacion de `tenant_id` en todas las tablas nuevas, incluidos modelos + BD + schemas).
 - Fase 3: implementada a nivel de codigo (`comparativos_v2/repo.py`, `service.py`, `__init__.py`).
-- Fase 3: pendiente de integracion en router y validacion funcional end-to-end.
+- Fase 3.1: integrada en endpoints legacy de contratos via adaptador temporal en `contracts/_internal/comparatives_service.py`.
+- Fase 3.1: pendiente validacion funcional end-to-end en runtime backend.
 
 ## Reglas cerradas
 - Nombres nuevos en espanol.
@@ -34,5 +35,5 @@ Separar el flujo nuevo de comparativos del legacy `contract`, manteniendo conviv
 - `contrato_historial_flujo`
 
 ## Pendiente inmediato
-- Fase 4: router nuevo para el flujo `comparativos_v2`.
-- Validacion funcional real del servicio nuevo en el entorno backend.
+- Validacion funcional real del adaptador legacy -> comparativos_v2 en el entorno backend.
+- Fase 4: router nuevo para el flujo `comparativos_v2` (sigue pendiente).

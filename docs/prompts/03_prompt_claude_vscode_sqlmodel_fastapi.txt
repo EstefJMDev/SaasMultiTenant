@@ -5,6 +5,7 @@ Implementa cambios reales sobre este repo FastAPI + SQLModel + PostgreSQL para l
 - Fase 2: completada (`comparativos_schemas.py`).
 - Fase 2.1: completada (tenant_id alineado en todas las tablas nuevas).
 - Fase 3: implementada a nivel de codigo en `app/domains/procurement/comparativos_v2/`.
+- Fase 3.1: integrada en endpoints legacy de contratos via adaptador temporal (`contracts/_internal/comparatives_service.py`).
 - Fase 4: aun no iniciada.
 
 2) Restricciones activas
@@ -29,5 +30,5 @@ Implementa cambios reales sobre este repo FastAPI + SQLModel + PostgreSQL para l
 - Entregar siempre resumen claro por archivo modificado.
 
 5) Prioridad actual
-- Continuar desde Fase 3 ya implementada.
-- Siguiente hito natural: router nuevo del flujo `comparativos_v2` o validacion funcional de servicio, segun se indique.
+- Continuar desde Fase 3.1 ya integrada bajo endpoints legacy.
+- Siguiente hito natural: validacion funcional runtime del adaptador o router nuevo del flujo `comparativos_v2`, segun se indique.
