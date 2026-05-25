@@ -44,7 +44,7 @@
 
 <h2 class="section">Exponen</h2>
 
-<p>Que CONSTRUCCIONES URDECON, S.A. es adjudicataria de las obras para realización de {{ NOMBRE_OBRA or '' }}, (Expediente {{ NUM_OBRA or '' }}) promovidas por {{ PROMOTORA or '' }}, para las que se contrata el suministro de los materiales siendo la fecha de inicio {{ FECHA_INICIO or '' }} y fecha fin {{ FECHA_FIN or '' }}.</p>
+<p>Que CONSTRUCCIONES URDECON, S.A. es adjudicataria de las obras para realización de {{ NOMBRE_OBRA or '' }}, para las que se contrata el suministro de los materiales siendo la fecha de inicio {{ FECHA_INICIO or '' }} y fecha fin {{ FECHA_FIN or '' }}.</p>
 
 <p><span class="section-label">OBJETO DEL SUBCONTRATO.</span> -El contrato tiene por objeto el suministro para el CONSTRUCTOR por parte del PROVEEDOR de los materiales que se especifican en el siguiente cuadro:</p>
 
@@ -95,9 +95,7 @@
 
 <p><strong>FORMA DE PAGO será mediante {{ FORMA_PAGO or '' }} dentro del periodo legal establecido de pago.</strong></p>
 
-<p><strong>PORTES Y DESCARGAS</strong></p>
-<p>Los portes irán a cargo de {{ PORTES or '' }}</p>
-<p>Las descargas irán a cargo de {{ DESCARGAS or '' }}.</p>
+<p><strong>PORTES Y DESCARGAS</strong> irán a cargo de {% if (PORTES or '')|upper == 'PROVEEDOR' %}{{ RAZON_SOCIAL or '' }}{% else %}{{ PORTES or '' }}{% endif %}{% if DESCARGAS and DESCARGAS != PORTES %}. Las descargas irán a cargo de {% if (DESCARGAS or '')|upper == 'PROVEEDOR' %}{{ RAZON_SOCIAL or '' }}{% else %}{{ DESCARGAS }}{% endif %}{% endif %}.</p>
 
 <div class="signatures">
   <div class="signatures-row">
@@ -145,6 +143,19 @@
 
 <div class="clause">
   <p><span class="clause-title">6.-FORMA DE PAGO.</span> – La forma de pago será pagare o confirming con fecha emisión dentro del periodo legal establecido de pago de {{ TERMINO_PAGO or '' }} desde la fecha de recepción de la factura en el departamento de contabilidad, cuyo correo es <a href="mailto:facturas@urdecon.es">facturas@urdecon.es</a>, más los necesarios para hacerlos coincidir con los días 22 inmediato posterior del mes correspondiente, siempre que el responsable de la obra haya dado su conformidad. Además de la factura deberá presentarse la documentación solicitada, requisitos ambos imprescindibles a efectos del cálculo del cómputo de días para el vencimiento. Los precios convenidos llevan incluidos los intereses y el coste por aplazamiento en el pago convenido, conforme a lo establecido en la legislación vigente.</p>
+</div>
+
+<div class="clause">
+  <p><span class="clause-title">6.1 Documentación obligatoria para validación de facturas.</span></p>
+  <p>Con carácter previo a la gestión y pago de cualquier factura, el suministrador deberá remitir a <a href="mailto:validacion.proveedores@urdecon.es">validacion.proveedores@urdecon.es</a> la documentación requerida por Construcciones Urdecon, S.A., incluyendo, entre otra:</p>
+  <ul>
+    <li>Contrato firmado.</li>
+    <li>Certificados vigentes de AEAT y Seguridad Social.</li>
+    <li>Partes de trabajo, albaranes o certificaciones.</li>
+    <li>Seguros y justificantes correspondientes.</li>
+    <li>Documentación laboral y preventiva exigible.</li>
+  </ul>
+  <p>La falta o incorrección de dicha documentación supondrá la paralización de la validación, tramitación y pago de la factura hasta su completa subsanación.</p>
 </div>
 
 <div class="clause">

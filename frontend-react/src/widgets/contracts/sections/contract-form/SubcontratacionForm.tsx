@@ -21,6 +21,7 @@ export interface SubcontratacionFormValues {
   contractDate: string;
   supplierLegalRepName: string;
   supplierLegalRepDni: string;
+  supplierResponsibleName: string;
   supplierAddress: string;
   supplierName: string;
   supplierTaxId: string;
@@ -48,6 +49,7 @@ export interface SubcontratacionFormValues {
 export interface SubcontratacionFormHandlers {
   onSupplierLegalRepNameChange: (value: string) => void;
   onSupplierLegalRepDniChange: (value: string) => void;
+  onSupplierResponsibleNameChange: (value: string) => void;
   onSupplierAddressChange: (value: string) => void;
   onSupplierNameChange: (value: string) => void;
   onSupplierTaxIdChange: (value: string) => void;
@@ -81,6 +83,7 @@ export const SubcontratacionForm: React.FC<SubcontratacionFormProps> = ({
   contractDate,
   supplierLegalRepName,
   supplierLegalRepDni,
+  supplierResponsibleName,
   supplierAddress,
   supplierName,
   supplierTaxId,
@@ -105,6 +108,7 @@ export const SubcontratacionForm: React.FC<SubcontratacionFormProps> = ({
   warrantyText,
   onSupplierLegalRepNameChange,
   onSupplierLegalRepDniChange,
+  onSupplierResponsibleNameChange,
   onSupplierAddressChange,
   onSupplierNameChange,
   onSupplierTaxIdChange,
@@ -146,7 +150,7 @@ export const SubcontratacionForm: React.FC<SubcontratacionFormProps> = ({
         />
       </Section>
 
-      {/* [NOMBRE_GERENTE] [NIF_GERENTE] [DIRECCION_EMPRESA] */}
+      {/* [NOMBRE_GERENTE] [NIF_GERENTE] [DIRECCION_EMPRESA] [RESPONSABLE] */}
       <Section icon={<User size={18} />} title="Firmante por el proveedor">
         <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
           <InputField
@@ -160,6 +164,13 @@ export const SubcontratacionForm: React.FC<SubcontratacionFormProps> = ({
             value={supplierLegalRepDni}
             onChange={onSupplierLegalRepDniChange}
             required
+          />
+          <InputField
+            label="Responsable del contrato"
+            value={supplierResponsibleName}
+            onChange={onSupplierResponsibleNameChange}
+            helper="Por defecto coincide con el gerente, pero puedes cambiarlo para este contrato."
+            fullWidth
           />
           <InputField
             label="Dirección empresa"

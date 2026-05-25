@@ -263,6 +263,13 @@ def _contract_field_map(contract: Contract) -> dict[str, str]:
     if not manager_name_value:
         manager_name_value = str(contract.supplier_name or "").strip()
 
+    responsible_value = str(
+        manager.get("responsable")
+        or manager.get("representante")
+        or additional.get("responsable")
+        or manager_name_value
+    ).strip()
+
     manager_nif_value = str(
         getattr(contract, "supplier_legal_rep_dni", None)
         or manager.get("nif_gerente")
@@ -360,6 +367,7 @@ def _contract_field_map(contract: Contract) -> dict[str, str]:
         "nombre_gerente": manager_name_value,
         "nif_gerente": manager_nif_value,
         "dni_gerente": manager_nif_value,
+        "responsable": responsible_value,
         "importe_total": _format_amount(contract.total_amount),
         "moneda": str(contract.currency or ""),
         "forma_pago": payment_method_value,
@@ -687,6 +695,8 @@ def _bracket_tokens_for_contract(contract: Contract) -> dict[str, str]:
         "DIRECCION_EMPRESA": _s(m.get("direccion_empresa")),
         "NOMBRE_GERENTE": _s(m.get("nombre_gerente")),
         "NIF_GERENTE": _s(m.get("nif_gerente")),
+        "RESPONSABLE": _s(m.get("responsable")),
+        "REPRESENTANTE": _s(m.get("responsable") or m.get("representante")),
         "NOMBRE_OBRA": _s(m.get("project_name") or m.get("nombre_obra")),
         "NUM_OBRA": _s(m.get("project_number") or m.get("num_obra")),
         "NUMERO_OBRA": _s(m.get("project_number") or m.get("num_obra")),

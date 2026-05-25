@@ -3,11 +3,11 @@
 
   Variables consumidas (todas string, ya formateadas por _build_substitution_context):
     Datos URDECON (constructor): fijos en la plantilla.
-    Proveedor:        RAZON_SOCIAL, CIF, DIRECCION_EMPRESA, NOMBRE_GERENTE, NIF_GERENTE
+    Proveedor:        RAZON_SOCIAL, CIF, DIRECCION_EMPRESA, NOMBRE_GERENTE, NIF_GERENTE, RESPONSABLE
     Escritura prov.:  TIPO_ESCRITURA, NOMBRE_NOTARIO, NUMERO_PROTOCOLO, FECHA_ESCRITURA (opcional)
-    Obra:             NOMBRE_OBRA, NUMERO_OBRA, NUM_OBRA, PROMOTORA, DURACION_OBRA, HITOS
-    Económicos:       PRECIO_NUMERO, PRECIO_LETRA, FORMA_PAGO
-    Trabajadores:     NUM_TRAB, NUM_TRAB_LETRA
+    Obra:             NOMBRE_OBRA (bold), NUM_OBRA (bold), PROMOTORA (bold), DURACION_OBRA, HITOS
+    Económicos:       PRECIO_NUMERO (bold), PRECIO_LETRA (bold), FORMA_PAGO
+    Trabajadores:     NUM_TRAB (bold), NUM_TRAB_LETRA (bold)
     Garantía:         GARANTIA
     Seguro:           SEGURO
     Fechas:           FECHA_INICIO, FECHA_FIN, FIN_OBRA, DIA, MES, ANIO
@@ -49,7 +49,7 @@
 
 <h2 class="section">Manifiestan</h2>
 
-<p>Que CONSTRUCCIONES URDECON, S.A. es adjudicataria de las obras {{ NOMBRE_OBRA or '' }} promovidas por {{ PROMOTORA or '' }}, con número de expediente {{ NUMERO_OBRA or NUM_OBRA or '' }} (código de obra interno Urdecon).</p>
+<p>Que CONSTRUCCIONES URDECON, S.A. es adjudicataria de las obras <strong>{{ NOMBRE_OBRA or '' }}</strong> promovidas por <strong>{{ PROMOTORA or '' }}</strong>, con número de expediente <strong>{{ NUM_OBRA or '' }}</strong> (código de obra interno Urdecon).</p>
 
 <p>Que para la ejecución de las obras ha decidido subcontratar con el SUBCONTRATISTA la ejecución de una parte de las unidades de obra con estricta sujeción a lo dispuesto en las condiciones generales del contrato y en las condiciones particulares establecidas. Las condiciones particulares prevalecen sobre las generales, aunque se complementan y amplían con lo dispuesto en las generales.</p>
 
@@ -97,7 +97,7 @@
 <p><strong>Se facturará lo realmente ejecutado en obra</strong></p>
 
 <div class="clause">
-  <p><span class="clause-title">SEGUNDA.- PRECIO.</span>- El precio total de la ejecución de las unidades de obra es de {{ PRECIO_NUMERO or '' }} ({{ PRECIO_LETRA or '' }})</p>
+  <p><span class="clause-title">SEGUNDA.- PRECIO.</span>- El precio total de la ejecución de las unidades de obra es de <strong>{{ PRECIO_NUMERO or '' }}</strong> (<strong>{{ PRECIO_LETRA or '' }}</strong>)</p>
   <p>El precio es el determinado en esta cláusula del contrato, configurándose conforme a lo dispuesto en las condiciones generales y, por lo tanto, no incrementándose por las fluctuaciones del precio de los materiales o por circunstancias de mercado, sin que tenga valor contractual ninguna cláusula del presupuesto adjunto al contrato modificación de precios y limitándose el contenido contractual del presupuesto a la expresión del precio cierto propuesto, que ha sido determinante para la adjudicación de la subcontrata y firma del contrato.</p>
   <p>En el caso de que el SUBCONTRATISTA emita una certificación con unidades/partidas de obra que no se contemplen en este contrato, Construcciones Urdecon, S.A se reserva el derecho a considerar que la factura no es de su competencia y a no gestionar su comprobación y pago.</p>
   <p>Por tanto, es necesario que antes de comenzar cualquier trabajo fuera de lo contemplado en este contrato, se elabore un ANEXO de cualquier modificación o ampliación del presente contrato.</p>
@@ -136,12 +136,12 @@
 <div class="clause">
   <p><span class="clause-title">SÉPTIMA.- TRABAJADORES EN OBRA</span></p>
   <p>El SUBCONTRATISTA se compromete a mantener un número mínimo de trabajadores en obra para asegurar el cumplimiento del plazo de ejecución determinado y evitar el retraso de los trabajos y de cualquier hito intermedio.</p>
-  <p>Las partes fijan ese número mínimo de trabajadores en {{ NUM_TRAB or '' }} ({{ NUM_TRAB_LETRA or '' }}), sin perjuicio de que, por picos de trabajo, los mismos deban ser aumentados.</p>
+  <p>Las partes fijan ese número mínimo de trabajadores en <strong>{{ NUM_TRAB or '' }}</strong> (<strong>{{ NUM_TRAB_LETRA or '' }}</strong>), sin perjuicio de que, por picos de trabajo, los mismos deban ser aumentados.</p>
 </div>
 
 <div class="clause">
   <p><span class="clause-title">OCTAVA.- RESPONSABLE DEL CONTRATO</span></p>
-  <p>A los efectos de la comunicación escrita que, para cualquier contingencia, de acuerdo con las condiciones generales, se requiera comunicación escrita del SUBCONTRATISTA y contestación expresa por escrito del CONTRATISTA, se designa como responsable del contrato a: {{ NOMBRE_GERENTE or '' }}. Toda comunicación no escrita, así como toda comunicación escrita no firmada por el responsable del contrato no vincula al CONTRATISTA.</p>
+  <p>A los efectos de la comunicación escrita que, para cualquier contingencia, de acuerdo con las condiciones generales, se requiera comunicación escrita del SUBCONTRATISTA y contestación expresa por escrito del CONTRATISTA, se designa como responsable del contrato a: {{ RESPONSABLE or '' }}. Toda comunicación no escrita, así como toda comunicación escrita no firmada por el responsable del contrato no vincula al CONTRATISTA.</p>
 </div>
 
 <div class="clause">
@@ -151,10 +151,20 @@
     <li>Las facturas se envían al correo <a href="mailto:facturas@urdecon.es">facturas@urdecon.es</a> de no recibirse en ese correo, la factura no será considerada recibida.</li>
     <li>Las facturas siempre deben ir a origen, y descontar certificaciones anteriores.</li>
     <li>Antes de emitir la factura de subcontratación, se debe firmar con el Jefe/a de Obra, una factura proforma (modelo oficial de Construcciones Urdecon, S.A) y aportarla firmada por el Jefe/a de Obra junto a la factura.</li>
-    <li>Las facturas deben llevar el número de expediente {{ NUMERO_OBRA or NUM_OBRA or '' }} (código de obra interno Urdecon).</li>
+    <li>Las facturas deben llevar el número de expediente <strong>{{ NUM_OBRA or '' }}</strong> (código de obra interno Urdecon).</li>
     <li>La factura debe llevar aplica la retención por garantía especificada en el presente contrato.</li>
     <li>La fecha de factura debe ser del mismo día en el que se recibe la factura por parte de Construcciones Urdecon, o como máximo de 3 días naturales antes.</li>
   </ol>
+  <p><strong>9.1 Documentación obligatoria para validación de facturas.</strong></p>
+  <p>Con carácter previo a la gestión y pago de cualquier factura, el subcontratista deberá remitir a <a href="mailto:validacion.proveedores@urdecon.es">validacion.proveedores@urdecon.es</a> la documentación requerida por Construcciones Urdecon, S.A., incluyendo, entre otra:</p>
+  <ul>
+    <li>Contrato firmado.</li>
+    <li>Certificados vigentes de AEAT y Seguridad Social.</li>
+    <li>Partes de trabajo, albaranes o certificaciones.</li>
+    <li>Seguros y justificantes correspondientes.</li>
+    <li>Documentación laboral y preventiva exigible.</li>
+  </ul>
+  <p>La falta o incorrección de dicha documentación supondrá la paralización de la validación, tramitación y pago de la factura hasta su completa subsanación.</p>
 </div>
 
 <div class="clause">
@@ -186,14 +196,14 @@
 <div class="signatures">
   <div class="signatures-row">
     <div class="signature-cell">
-      <div class="signature-role">El Contratista</div>
-      <div class="signature-company">CONSTRUCCIONES URDECON, S.A.</div>
-      <div class="signature-fdo">Fdo.: Enrique Fernández-Delgado Gavilá</div>
-    </div>
-    <div class="signature-cell">
       <div class="signature-role">El Subcontratista</div>
       <div class="signature-company">{{ RAZON_SOCIAL or '' }}</div>
       <div class="signature-fdo">Fdo.: {{ NOMBRE_GERENTE or '' }}</div>
+    </div>
+    <div class="signature-cell">
+      <div class="signature-role">El Contratista</div>
+      <div class="signature-company">CONSTRUCCIONES URDECON, S.A.</div>
+      <div class="signature-fdo">Fdo.: Enrique Fernández-Delgado Gavilá</div>
     </div>
   </div>
 </div>
@@ -526,14 +536,14 @@
 <div class="signatures">
   <div class="signatures-row">
     <div class="signature-cell">
-      <div class="signature-role">El Contratista</div>
-      <div class="signature-company">CONSTRUCCIONES URDECON, S.A.</div>
-      <div class="signature-fdo">Fdo.: Enrique Fernández-Delgado Gavilá</div>
-    </div>
-    <div class="signature-cell">
       <div class="signature-role">El Subcontratista</div>
       <div class="signature-company">{{ RAZON_SOCIAL or '' }}</div>
       <div class="signature-fdo">Fdo.: {{ NOMBRE_GERENTE or '' }}</div>
+    </div>
+    <div class="signature-cell">
+      <div class="signature-role">El Contratista</div>
+      <div class="signature-company">CONSTRUCCIONES URDECON, S.A.</div>
+      <div class="signature-fdo">Fdo.: Enrique Fernández-Delgado Gavilá</div>
     </div>
   </div>
 </div>
@@ -554,7 +564,7 @@
 
 <h2 class="section">Exponen</h2>
 
-<p>Que las partes formalizaron en fecha (CONTRATO MATRIZ) _____________ el contrato para la obra {{ NOMBRE_OBRA or '_______________' }} al que las partes se remiten y dan por reproducido en aras de la brevedad.</p>
+<p>Que las partes formalizaron en fecha (CONTRATO MATRIZ) _____________ el contrato para la obra <strong>{{ NOMBRE_OBRA or '_______________' }}</strong> al que las partes se remiten y dan por reproducido en aras de la brevedad.</p>
 
 <p>Que el subcontratista ha llevado a cabo la prestación pactada en los términos convenidos, salvo vicios ocultos y responsabilidades que pudieran surgir dentro del período de garantía, habiendo percibido el precio pactado por ello, por lo que las partes suscriben la presente</p>
 
@@ -569,14 +579,14 @@
 <div class="signatures">
   <div class="signatures-row">
     <div class="signature-cell">
-      <div class="signature-role">El Contratista</div>
-      <div class="signature-company">CONSTRUCCIONES URDECON, S.A.</div>
-      <div class="signature-fdo">Fdo.: Enrique Fernández-Delgado Gavilá</div>
-    </div>
-    <div class="signature-cell">
       <div class="signature-role">El Subcontratista</div>
       <div class="signature-company">{{ RAZON_SOCIAL or '' }}</div>
       <div class="signature-fdo">Fdo.: {{ NOMBRE_GERENTE or '' }}</div>
+    </div>
+    <div class="signature-cell">
+      <div class="signature-role">El Contratista</div>
+      <div class="signature-company">CONSTRUCCIONES URDECON, S.A.</div>
+      <div class="signature-fdo">Fdo.: Enrique Fernández-Delgado Gavilá</div>
     </div>
   </div>
 </div>

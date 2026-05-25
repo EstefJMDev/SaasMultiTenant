@@ -63,10 +63,10 @@ services:
           "-c",
           "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/', timeout=2)",
         ]
-      interval: 5s
-      timeout: 3s
-      retries: 20
-      start_period: 10s
+      interval: ${BACKEND_HEALTHCHECK_INTERVAL:-10s}
+      timeout: ${BACKEND_HEALTHCHECK_TIMEOUT:-5s}
+      retries: ${BACKEND_HEALTHCHECK_RETRIES:-30}
+      start_period: ${BACKEND_HEALTHCHECK_START_PERIOD:-60s}
     expose:
       - "8000"
     volumes:

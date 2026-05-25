@@ -8945,6 +8945,7 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
   const [projectName, setProjectName] = useState("");
   const [nombreGerente, setNombreGerente] = useState("");
   const [nifGerente, setNifGerente] = useState("");
+  const [responsableContrato, setResponsableContrato] = useState("");
   const [terminoPago, setTerminoPago] = useState("");
   const [duracionObra, setDuracionObra] = useState("");
   const [formaPagoPactadaDisplay, setFormaPagoPactadaDisplay] = useState("");
@@ -9324,6 +9325,13 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
     // mostrar un nombre incorrecto.
     setNombreGerente(contract?.supplier_legal_rep_name ?? "");
     setNifGerente(contract?.supplier_legal_rep_dni ?? "");
+    setResponsableContrato(
+      contractData.manager && typeof manager.responsable === "string" && manager.responsable.trim()
+        ? manager.responsable
+        : (typeof manager.representante === "string" && manager.representante.trim()
+            ? manager.representante
+            : (contract?.supplier_legal_rep_name ?? ""))
+    );
     // Forma de pago: para SUMINISTRO viene del comparativo (payment_method_agreed).
     // Lo descomponemos en método + días para los campos readonly del form.
     const pactadaStr = String(
@@ -9563,6 +9571,9 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
         // nombre del usuario creador, no del firmante).
         if (supplier.legal_rep_name) {
           setNombreGerente(supplier.legal_rep_name);
+          setResponsableContrato((current) =>
+            current.trim().length > 0 ? current : supplier.legal_rep_name ?? "",
+          );
           autofilledCount += 1;
         }
         if (supplier.legal_rep_dni) {
@@ -9629,6 +9640,7 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
     const currentAdditional = (currentData.additional as Record<string, unknown> | undefined) ?? {};
     const currentLogistics = (currentData.logistics as Record<string, unknown> | undefined) ?? {};
     const currentService = (currentData.service as Record<string, unknown> | undefined) ?? {};
+    const currentManager = (currentData.manager as Record<string, unknown> | undefined) ?? {};
     const isNonEmpty = (value: unknown) =>
       typeof value === "string" ? value.trim().length > 0 : value != null;
     const pickNonEmpty = (...values: unknown[]) =>
@@ -9782,9 +9794,14 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
           ...currentService,
           category: serviceCategory,
         },
+        manager: {
+          ...currentManager,
+          responsable: responsableContrato,
+        },
         additional: {
           ...currentAdditional,
           milestones,
+          responsable: responsableContrato,
           // Preservar descripción de UDs si viene de intake.
           units_description:
             currentAdditional.units_description ??
@@ -10119,6 +10136,7 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
             contractDate={dedicatedContractDate}
             supplierLegalRepName={nombreGerente}
             supplierLegalRepDni={nifGerente}
+            supplierResponsibleName={responsableContrato}
             supplierAddress={supplierAddress}
             supplierName={supplierName}
             supplierTaxId={supplierTaxId}
@@ -10191,6 +10209,7 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
             warrantyText={warrantyText}
             onSupplierLegalRepNameChange={setNombreGerente}
             onSupplierLegalRepDniChange={setNifGerente}
+            onSupplierResponsibleNameChange={setResponsableContrato}
             onSupplierAddressChange={setSupplierAddress}
             onSupplierNameChange={setSupplierName}
             onSupplierTaxIdChange={setSupplierTaxId}
@@ -10228,6 +10247,7 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
             contractDate={dedicatedContractDate}
             supplierLegalRepName={nombreGerente}
             supplierLegalRepDni={nifGerente}
+            supplierResponsibleName={responsableContrato}
             supplierAddress={supplierAddress}
             supplierName={supplierName}
             supplierTaxId={supplierTaxId}
@@ -10831,6 +10851,7 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
             warrantyText={warrantyText}
             onSupplierLegalRepNameChange={setNombreGerente}
             onSupplierLegalRepDniChange={setNifGerente}
+            onSupplierResponsibleNameChange={setResponsableContrato}
             onSupplierAddressChange={setSupplierAddress}
             onSupplierNameChange={setSupplierName}
             onSupplierTaxIdChange={setSupplierTaxId}
