@@ -9,7 +9,6 @@ Aplicacion SaaS multi-tenant con:
 ## Levantar Docker en local
 Ejecutar desde la carpeta `/repo`
 ```bash
-cd deploy
 docker compose --env-file deploy/env/compose.local.env -f deploy/compose/docker-compose.yml -f deploy/compose/docker-compose.local.yml up -d --build
 ```
 

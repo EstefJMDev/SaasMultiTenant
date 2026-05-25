@@ -89,7 +89,7 @@ def get_dashboard_summary(session: Session, *, current_user: User) -> DashboardS
 
     # Métricas básicas de soporte (tickets)
     now = datetime.now(timezone.utc)
-    today_start = datetime(now.year, now.month, now.day)
+    today_start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
     week_start = today_start - timedelta(days=7)
 
     ticket_scope = select(Ticket)
@@ -179,4 +179,3 @@ def get_recent_active_users(
     ]
 
     return RecentActiveUsersResponse(items=items)
-
