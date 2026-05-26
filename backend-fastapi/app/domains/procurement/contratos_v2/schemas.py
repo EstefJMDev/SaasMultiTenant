@@ -118,6 +118,7 @@ class ContratoV2DetalleRead(BaseModel):
     nombre_obra: Optional[str] = None
     titulo: Optional[str] = None
     tipo_contrato: Optional[str] = None
+    datos_contractuales_json: Optional[dict] = None
     proveedor_id: int
     estado: str
     usuario_creador_id: int
@@ -145,3 +146,4 @@ class ContratoV2Update(BaseModel):
     nombre_obra: Optional[str] = None
     titulo: Optional[str] = None
     tipo_contrato: Optional[str] = None
+    datos_contractuales_json: Optional[dict] = None

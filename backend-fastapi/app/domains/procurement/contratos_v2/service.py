@@ -200,6 +200,7 @@ class ContratosV2Service:
             nombre_obra=contrato.nombre_obra,
             titulo=contrato.titulo,
             tipo_contrato=contrato.tipo_contrato,
+            datos_contractuales_json=contrato.datos_contractuales_json,
             proveedor_id=contrato.proveedor_id,
             estado=contrato.estado,
             usuario_creador_id=contrato.usuario_creador_id,
@@ -345,4 +346,3 @@ class ContratosV2Service:
                 "No se pudo actualizar el contrato v2.",
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             ) from exc
-
