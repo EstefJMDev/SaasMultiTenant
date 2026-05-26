@@ -2,17 +2,18 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation
-from typing import Any, Iterable, Optional
+from typing import TYPE_CHECKING, Any, Iterable, Optional
 
 from num2words import num2words
 
-from app.platform.contracts_core.comparativos_models import (
-    Contrato,
-    ContratoDatosProveedor,
-    ContratoHito,
-    ContratoOfertaAdjudicada,
-    ContratoOfertaAdjudicadaPartida,
-)
+if TYPE_CHECKING:
+    from app.platform.contracts_core.comparativos_models import (
+        Contrato,
+        ContratoDatosProveedor,
+        ContratoHito,
+        ContratoOfertaAdjudicada,
+        ContratoOfertaAdjudicadaPartida,
+    )
 
 
 _MONTHS_ES = [
