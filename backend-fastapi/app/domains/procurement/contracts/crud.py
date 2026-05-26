@@ -919,15 +919,13 @@ def get_contract(session: Session, *, contract_id: int, tenant_id: int, user: Us
     ):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Sin permisos")
     contract = _get_contract_or_404(session, contract_id, tenant_id)
-    if (
-        _is_hidden_contract_pre_admin_status(contract)
-        and not _user_can_access_admin_draft_contract(
-            session,
-            user=user,
-            tenant_id=tenant_id,
-        )
-    ):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Sin permisos")
+    # NOTA: el `hidden_check` (_is_hidden_contract_pre_admin_status) NO se
+    # aplica en LECTURA. Su proposito original era restringir la edicion
+    # durante la fase pre-admin (DRAFT+APPROVED o PENDING_*) a roles
+    # admin/dept-admin. Mantenerlo aqui provocaba incoherencia entre
+    # `list_contracts` (que no lo aplica) y `get_contract` (que si): el
+    # listado mostraba IDs pero el detalle devolvia 403. La proteccion de
+    # ESCRITURA permanece intacta en `update_contract`.
     if (
         not (
             can_view_all_comparatives(session, user)

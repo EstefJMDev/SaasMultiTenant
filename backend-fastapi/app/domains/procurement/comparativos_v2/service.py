@@ -24,6 +24,7 @@ from app.platform.contracts_core.comparativos_schemas import (
     ComparativoOfertaAdjudicadaPartidaCreate,
     ComparativoOfertaAdjudicadaPartidaRead,
     ComparativoOfertaAdjudicadaRead,
+    ComparativoOfertaDescartadaConPartidasRead,
     ComparativoOfertaDescartadaCreate,
     ComparativoOfertaDescartadaPartidaCreate,
     ComparativoOfertaDescartadaPartidaRead,
@@ -72,8 +73,13 @@ class ComparativoDetalleRead(BaseModel):
     oferta_adjudicada_partidas: list[ComparativoOfertaAdjudicadaPartidaRead] = Field(
         default_factory=list
     )
-    oferta_descartada: Optional[ComparativoOfertaDescartadaRead] = None
-    oferta_descartada_partidas: list[ComparativoOfertaDescartadaPartidaRead] = Field(
+    ofertas_descartadas: list[ComparativoOfertaDescartadaRead] = Field(
+        default_factory=list
+    )
+    ofertas_descartadas_partidas: list[ComparativoOfertaDescartadaPartidaRead] = Field(
+        default_factory=list
+    )
+    ofertas_descartadas_con_partidas: list[ComparativoOfertaDescartadaConPartidasRead] = Field(
         default_factory=list
     )
     aprobaciones: list[ComparativoAprobacionRead] = Field(default_factory=list)
@@ -161,23 +167,27 @@ class ComparativosV2Service:
     def _validar_datos_basicos_envio(self, comparativo: Comparativo) -> None:
         if not comparativo.titulo:
             raise DomainError("No se puede enviar a aprobacion sin titulo.")
-        if comparativo.obra_id is None:
-            raise DomainError("No se puede enviar a aprobacion sin obra_id.")
         if not comparativo.numero_obra or not comparativo.nombre_obra:
             raise DomainError(
                 "No se puede enviar a aprobacion sin snapshot de obra (numero_obra, nombre_obra)."
             )
         if not comparativo.tipo_contrato:
             raise DomainError("No se puede enviar a aprobacion sin tipo_contrato.")
+        if comparativo.proveedor_id is None:
+            raise DomainError("No se puede enviar a aprobacion sin proveedor_id.")
         self._validar_proveedor_existe(comparativo.proveedor_id)
 
     def _comparativo_read_con_proveedor(
         self,
         comparativo: Comparativo,
     ) -> ComparativoRead:
-        proveedor = repo.obtener_proveedor_por_id(
-            self.session,
-            proveedor_id=comparativo.proveedor_id,
+        proveedor = (
+            repo.obtener_proveedor_por_id(
+                self.session,
+                proveedor_id=comparativo.proveedor_id,
+            )
+            if comparativo.proveedor_id is not None
+            else None
         )
         base = ComparativoRead.model_validate(comparativo)
         return base.model_copy(
@@ -220,18 +230,17 @@ class ComparativosV2Service:
             else []
         )
 
-        oferta_descartada_model = repo.obtener_oferta_descartada_por_comparativo(
+        oferta_descartada_models = repo.obtener_ofertas_descartadas_por_comparativo(
             self.session,
             tenant_id=comparativo.tenant_id,
             comparativo_id=comparativo.id,
         )
-        oferta_descartada = (
-            ComparativoOfertaDescartadaRead.model_validate(oferta_descartada_model)
-            if oferta_descartada_model
-            else None
-        )
-        oferta_descartada_partidas = (
-            [
+        ofertas_descartadas: list[ComparativoOfertaDescartadaRead] = []
+        ofertas_descartadas_partidas: list[ComparativoOfertaDescartadaPartidaRead] = []
+        ofertas_descartadas_con_partidas: list[ComparativoOfertaDescartadaConPartidasRead] = []
+        for oferta_descartada_model in oferta_descartada_models:
+            oferta_read = ComparativoOfertaDescartadaRead.model_validate(oferta_descartada_model)
+            partidas_read = [
                 ComparativoOfertaDescartadaPartidaRead.model_validate(item)
                 for item in repo.obtener_partidas_oferta_descartada(
                     self.session,
@@ -239,9 +248,14 @@ class ComparativosV2Service:
                     comparativo_oferta_descartada_id=oferta_descartada_model.id,
                 )
             ]
-            if oferta_descartada_model
-            else []
-        )
+            ofertas_descartadas.append(oferta_read)
+            ofertas_descartadas_partidas.extend(partidas_read)
+            ofertas_descartadas_con_partidas.append(
+                ComparativoOfertaDescartadaConPartidasRead(
+                    oferta=oferta_read,
+                    partidas=partidas_read,
+                )
+            )
 
         aprobaciones = [
             ComparativoAprobacionRead.model_validate(item)
@@ -265,8 +279,9 @@ class ComparativosV2Service:
             hitos=hitos,
             oferta_adjudicada=oferta_adjudicada,
             oferta_adjudicada_partidas=oferta_adjudicada_partidas,
-            oferta_descartada=oferta_descartada,
-            oferta_descartada_partidas=oferta_descartada_partidas,
+            ofertas_descartadas=ofertas_descartadas,
+            ofertas_descartadas_partidas=ofertas_descartadas_partidas,
+            ofertas_descartadas_con_partidas=ofertas_descartadas_con_partidas,
             aprobaciones=aprobaciones,
             historial=historial,
         )
@@ -370,7 +385,8 @@ class ComparativosV2Service:
     ) -> ComparativoDetalleRead:
         if payload.tenant_id != tenant_id:
             raise DomainError("tenant_id del payload no coincide con el tenant de la operacion.")
-        self._validar_proveedor_existe(payload.proveedor_id)
+        if payload.proveedor_id is not None:
+            self._validar_proveedor_existe(payload.proveedor_id)
 
         hitos = list(hitos or [])
         oferta_adjudicada_partidas_provided = oferta_adjudicada_partidas is not None
@@ -769,17 +785,19 @@ class ComparativosV2Service:
         self,
         aprobaciones: Sequence[ComparativoAprobacion],
     ) -> list[ComparativoAprobacion]:
-        pendientes = sorted(
-            [
-                item
-                for item in aprobaciones
-                if item.estado == EstadoAprobacionComparativo.PENDIENTE.value
-            ],
-            key=lambda item: (item.orden_aprobacion, item.id),
-        )
-        siguiente = pendientes[0] if pendientes else None
+        pendientes = [
+            item
+            for item in aprobaciones
+            if item.estado == EstadoAprobacionComparativo.PENDIENTE.value
+        ]
+        # Aprobaciones paralelas: el orden mínimo pendiente determina el grupo activo.
+        # Todos los pendientes de ese orden mínimo son "actuales" simultáneamente.
+        min_orden = min((item.orden_aprobacion for item in pendientes), default=None)
+        pendientes_actuales = {
+            item.id for item in pendientes if item.orden_aprobacion == min_orden
+        }
         for item in aprobaciones:
-            item.es_aprobacion_actual = bool(siguiente and item.id == siguiente.id)
+            item.es_aprobacion_actual = item.id in pendientes_actuales
             item.fecha_actualizacion = _utcnow()
             self.session.add(item)
         self.session.flush()
@@ -839,7 +857,8 @@ class ComparativosV2Service:
             pendientes = self._recalcular_aprobacion_actual(aprobaciones_actualizadas)
 
             estado_anterior = comparativo.estado
-            if not pendientes:
+            cerrado_ahora = not pendientes
+            if cerrado_ahora:
                 comparativo.estado = EstadoComparativo.APROBADO.value
                 comparativo.fecha_aprobacion = _utcnow()
                 comparativo.fecha_rechazo = None
@@ -860,6 +879,15 @@ class ComparativosV2Service:
                 usuario_id=usuario_id,
                 comentario=comentario,
             )
+            # Camino I: si esta aprobacion cierra el circuito (ultima
+            # rama aprobada), generamos automaticamente el contrato v2.
+            # La operacion es idempotente: si ya existe contrato vinculado
+            # devuelve el existente sin re-crear.
+            if cerrado_ahora and comparativo.contrato_id is None:
+                self._generar_contrato_desde_comparativo_impl(
+                    comparativo=comparativo,
+                    usuario_id=usuario_id,
+                )
             self._commit()
             self.session.refresh(comparativo)
             return self._armar_detalle(comparativo)
@@ -1050,21 +1078,133 @@ class ComparativosV2Service:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             ) from exc
 
+    def _generar_contrato_desde_comparativo_impl(
+        self,
+        *,
+        comparativo: Comparativo,
+        usuario_id: Optional[int],
+    ) -> int:
+        """Implementacion sin commit/rollback. Pensada para llamarse desde
+        `aprobar_comparativo` dentro de su misma transaccion.
+
+        Idempotente: si `comparativo.contrato_id` ya existe, devuelve ese
+        contrato_id sin recrear nada.
+
+        Devuelve el `contrato_id` resultante.
+        """
+        from app.platform.contracts_core.comparativos_enums import AccionHistorialContrato
+
+        if comparativo.contrato_id is not None:
+            return int(comparativo.contrato_id)
+
+        if comparativo.estado != EstadoComparativo.APROBADO.value:
+            raise DomainError(
+                "Solo se puede generar contrato desde un comparativo APROBADO.",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        if comparativo.proveedor_id is None:
+            raise DomainError(
+                "El comparativo no tiene proveedor_id; no se puede generar contrato.",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+
+        proveedor = repo.obtener_proveedor_por_id(
+            self.session,
+            proveedor_id=int(comparativo.proveedor_id),
+        )
+        if proveedor is None:
+            raise DomainError(
+                "Proveedor referenciado por el comparativo no existe en `proveedores`.",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+
+        contrato = repo.crear_contrato_desde_comparativo(
+            self.session,
+            comparativo=comparativo,
+            usuario_id=usuario_id or comparativo.usuario_creador_id,
+        )
+
+        repo.crear_datos_proveedor_snapshot(
+            self.session,
+            tenant_id=comparativo.tenant_id,
+            contrato_id=contrato.id,
+            proveedor_id=int(comparativo.proveedor_id),
+            proveedor_data=proveedor,
+        )
+
+        hitos_origen = repo.obtener_hitos_por_comparativo(
+            self.session,
+            tenant_id=comparativo.tenant_id,
+            comparativo_id=comparativo.id,
+        )
+        if hitos_origen:
+            repo.copiar_hitos_comparativo_a_contrato(
+                self.session,
+                tenant_id=comparativo.tenant_id,
+                contrato_id=contrato.id,
+                hitos_origen=hitos_origen,
+            )
+
+        repo.registrar_evento_historial_contrato(
+            self.session,
+            tenant_id=comparativo.tenant_id,
+            contrato_id=contrato.id,
+            accion=AccionHistorialContrato.CREACION.value,
+            usuario_id=usuario_id or comparativo.usuario_creador_id,
+            estado_anterior=None,
+            estado_nuevo=contrato.estado,
+            comentario="Contrato generado automaticamente desde comparativo aprobado.",
+            metadatos_json={"comparativo_id": int(comparativo.id)},
+        )
+
+        # Enlace en el comparativo y evento de auditoria
+        comparativo.contrato_id = contrato.id
+        comparativo.fecha_actualizacion = _utcnow()
+        self.session.add(comparativo)
+        self.session.flush()
+
+        repo.registrar_evento_historial(
+            self.session,
+            tenant_id=comparativo.tenant_id,
+            comparativo_id=comparativo.id,
+            estado_anterior=comparativo.estado,
+            estado_nuevo=comparativo.estado,
+            accion=AccionHistorialComparativo.GENERACION_CONTRATO.value,
+            usuario_id=usuario_id,
+            comentario=None,
+            metadatos_json={"contrato_id": int(contrato.id)},
+        )
+
+        return int(contrato.id)
+
     def generar_contrato_desde_comparativo(
         self,
         *,
         tenant_id: int,
         comparativo_id: int,
         usuario_id: Optional[int],
-    ) -> None:
-        self._obtener_comparativo_o_error(
+    ) -> int:
+        """Entrypoint publico: envuelve el impl en commit/rollback.
+
+        Devuelve el `contrato_id` (existente o recien creado).
+        """
+        comparativo = self._obtener_comparativo_o_error(
             tenant_id=tenant_id,
             comparativo_id=comparativo_id,
         )
-        raise DomainError(
-            (
-                "generar_contrato_desde_comparativo aun no esta implementado "
-                "en Fase 3. Queda pendiente para la fase de contratos."
-            ),
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        )
+        try:
+            contrato_id = self._generar_contrato_desde_comparativo_impl(
+                comparativo=comparativo,
+                usuario_id=usuario_id,
+            )
+            self._commit()
+            return contrato_id
+        except DomainError:
+            self._rollback()
+            raise
+        except Exception as exc:
+            self._rollback()
+            raise DomainError(
+                "No se pudo generar el contrato desde el comparativo.",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            ) from exc

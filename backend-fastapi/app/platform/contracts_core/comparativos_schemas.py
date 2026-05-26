@@ -19,13 +19,12 @@ class _ReadSchema(BaseModel):
 
 class ComparativoCreate(BaseModel):
     tenant_id: int
-    obra_id: Optional[int] = None
     numero_obra: Optional[str] = None
     nombre_obra: Optional[str] = None
     titulo: Optional[str] = None
     estado: EstadoComparativo = EstadoComparativo.BORRADOR
     tipo_contrato: Optional[str] = None
-    proveedor_id: int
+    proveedor_id: Optional[int] = None
     usuario_creador_id: int
     usuario_actualizacion_id: Optional[int] = None
     nombre_contacto: Optional[str] = None
@@ -45,7 +44,6 @@ class ComparativoCreate(BaseModel):
 
 
 class ComparativoUpdate(BaseModel):
-    obra_id: Optional[int] = None
     numero_obra: Optional[str] = None
     nombre_obra: Optional[str] = None
     titulo: Optional[str] = None
@@ -76,13 +74,12 @@ class ComparativoUpdate(BaseModel):
 class ComparativoRead(_ReadSchema):
     id: int
     tenant_id: int
-    obra_id: Optional[int] = None
     numero_obra: Optional[str] = None
     nombre_obra: Optional[str] = None
     titulo: Optional[str] = None
     estado: EstadoComparativo
     tipo_contrato: Optional[str] = None
-    proveedor_id: int
+    proveedor_id: Optional[int] = None
     cif: Optional[str] = None
     razon_social: Optional[str] = None
     usuario_creador_id: int
@@ -113,13 +110,12 @@ class ComparativoRead(_ReadSchema):
 class ComparativoResumenRead(_ReadSchema):
     id: int
     tenant_id: int
-    obra_id: Optional[int] = None
     numero_obra: Optional[str] = None
     nombre_obra: Optional[str] = None
     titulo: Optional[str] = None
     estado: EstadoComparativo
     tipo_contrato: Optional[str] = None
-    proveedor_id: int
+    proveedor_id: Optional[int] = None
     cif: Optional[str] = None
     razon_social: Optional[str] = None
     fecha_creacion: datetime
@@ -394,6 +390,11 @@ class ComparativoOfertaDescartadaPartidaRead(_ReadSchema):
     orden: int
 
 
+class ComparativoOfertaDescartadaConPartidasRead(BaseModel):
+    oferta: ComparativoOfertaDescartadaRead
+    partidas: list[ComparativoOfertaDescartadaPartidaRead]
+
+
 class ComparativoAprobacionRead(_ReadSchema):
     id: int
     tenant_id: int
@@ -440,6 +441,7 @@ __all__ = [
     "ComparativoOfertaDescartadaCreate",
     "ComparativoOfertaDescartadaUpdate",
     "ComparativoOfertaDescartadaRead",
+    "ComparativoOfertaDescartadaConPartidasRead",
     "ComparativoOfertaDescartadaPartidaCreate",
     "ComparativoOfertaDescartadaPartidaUpdate",
     "ComparativoOfertaDescartadaPartidaRead",

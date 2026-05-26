@@ -14,11 +14,8 @@ from app.models.user import User
 from app.platform.contracts_core.comparativos_enums import EstadoComparativo
 from app.platform.contracts_core.comparativos_schemas import ComparativoCreate, ComparativoUpdate
 from app.platform.contracts_core.models import (
-    ApprovalScope,
-    ApprovalStatus,
     ComparativeStatus,
     Contract,
-    ContractDepartment,
 )
 from app.platform.contracts_core.permissions import (
     can_approve_comparative,
@@ -44,12 +41,20 @@ from app.domains.procurement.api import (
     validate_rea_for_contract as _validate_rea_for_contract,
 )
 from app.domains.procurement.comparatives import service as legacy_comparatives_service
+from app.domains.procurement.comparativos_v2 import repo as comparativos_v2_repo
 from app.domains.procurement.comparativos_v2.service import (
     ComparativoDetalleRead,
     ComparativosV2Service,
 )
 from app.domains.procurement.contracts import crud as contract_crud
 from app.domains.procurement.suppliers import normalize_tax_id
+from app.platform.contracts_core.comparativos_schemas import (
+    ComparativoHitoCreate,
+    ComparativoOfertaAdjudicadaCreate,
+    ComparativoOfertaAdjudicadaPartidaCreate,
+    ComparativoOfertaDescartadaCreate,
+    ComparativoOfertaDescartadaPartidaCreate,
+)
 
 # Adaptador temporal Contract legacy -> comparativos_v2. No cambiar routers ni frontend.
 logger = logging.getLogger("app.platform.contracts_core")
@@ -69,7 +74,9 @@ _V2_LINK_ID_KEY = "comparativo_id"
 
 __all__ = [
     "get_comparative_offers",
+    "ensure_v2_draft_link",
     "save_draft",
+    "sync_v2_children_from_contract",
     "sync_offer_ids",
     "add_offer",
     "select_offer",
@@ -299,22 +306,79 @@ def _resolve_v2_proveedor_id_from_contract(
             pass
 
     lookup_tax_id = normalize_tax_id(contract.supplier_tax_id)
-    if not lookup_tax_id:
+    if lookup_tax_id:
+        stmt = text(
+            """
+            SELECT id
+            FROM proveedores
+            WHERE regexp_replace(UPPER(COALESCE(cif, '')), '[^A-Z0-9]', '', 'g') = :lookup_id
+            LIMIT 1
+            """
+        )
+        row = session.exec(stmt, params={"lookup_id": lookup_tax_id}).first()
+        proveedor_id = _int_from_row_value(row)
+        if proveedor_id is not None:
+            return proveedor_id
+
+    comparative_data = contract.comparative_data if isinstance(contract.comparative_data, dict) else {}
+    offers = comparative_data.get("offers")
+    selected_offer_id = comparative_data.get("selected_offer_id")
+    candidates: list[str] = []
+
+    contract_supplier_name = _clean_optional_text(contract.supplier_name)
+    if contract_supplier_name:
+        candidates.append(contract_supplier_name)
+
+    if isinstance(offers, list):
+        selected_offer: Optional[dict[str, Any]] = None
+        if selected_offer_id is not None:
+            for offer in offers:
+                if not isinstance(offer, dict):
+                    continue
+                offer_id = offer.get("id")
+                if offer_id is not None and str(offer_id) == str(selected_offer_id):
+                    selected_offer = offer
+                    break
+        if selected_offer is None:
+            selected_offer = next((offer for offer in offers if isinstance(offer, dict)), None)
+        if selected_offer is not None:
+            for key in ("supplier_name", "offer_name", "empresa", "proveedor"):
+                value = _clean_optional_text(selected_offer.get(key))
+                if value and value not in candidates:
+                    candidates.append(value)
+
+    providers = comparative_data.get("providers")
+    if isinstance(providers, list):
+        for provider in providers:
+            if not isinstance(provider, dict):
+                continue
+            value = _clean_optional_text(provider.get("name"))
+            if value and value not in candidates:
+                candidates.append(value)
+
+    if not candidates:
         return None
 
-    stmt = text(
+    stmt_by_name = text(
         """
         SELECT id
         FROM proveedores
-        WHERE regexp_replace(UPPER(COALESCE(cif, '')), '[^A-Z0-9]', '', 'g') = :lookup_id
+        WHERE regexp_replace(UPPER(COALESCE(razon_social, '')), '[^A-Z0-9]', '', 'g')
+              = regexp_replace(UPPER(:lookup_name), '[^A-Z0-9]', '', 'g')
+           OR regexp_replace(UPPER(COALESCE(empresa, '')), '[^A-Z0-9]', '', 'g')
+              = regexp_replace(UPPER(:lookup_name), '[^A-Z0-9]', '', 'g')
         LIMIT 1
         """
     )
-    row = session.exec(stmt, params={"lookup_id": lookup_tax_id}).first()
-    return _int_from_row_value(row)
+    for candidate in candidates:
+        row = session.exec(stmt_by_name, params={"lookup_name": candidate}).first()
+        proveedor_id = _int_from_row_value(row)
+        if proveedor_id is not None:
+            return proveedor_id
+    return None
 
 
-def _extract_contract_work_snapshot(contract: Contract) -> tuple[Optional[int], Optional[str], Optional[str]]:
+def _extract_contract_work_snapshot(contract: Contract) -> tuple[Optional[str], Optional[str]]:
     comparative_data = contract.comparative_data if isinstance(contract.comparative_data, dict) else {}
     header = comparative_data.get("header")
     header_data = header if isinstance(header, dict) else {}
@@ -330,7 +394,7 @@ def _extract_contract_work_snapshot(contract: Contract) -> tuple[Optional[int], 
         comparative_data.get("obra"),
         header_data.get("obra_nombre"),
     )
-    return contract.project_id, obra_numero, obra_nombre
+    return obra_numero, obra_nombre
 
 
 def _build_v2_create_payload_from_contract(
@@ -340,38 +404,59 @@ def _build_v2_create_payload_from_contract(
     user: User,
 ) -> Optional[ComparativoCreate]:
     proveedor_id = _resolve_v2_proveedor_id_from_contract(session, contract)
-    obra_id, obra_numero, obra_nombre = _extract_contract_work_snapshot(contract)
+    obra_numero, obra_nombre = _extract_contract_work_snapshot(contract)
     titulo = _clean_optional_text(contract.title)
     tipo_contrato = _clean_optional_text(getattr(contract.type, "value", contract.type))
     usuario_creador_id = user.id or contract.created_by_id
+    comparative_data = contract.comparative_data if isinstance(contract.comparative_data, dict) else {}
+    totales = comparative_data.get("totales") if isinstance(comparative_data.get("totales"), dict) else {}
+    forma_pago = _first_non_empty_text(
+        totales.get("forma_pago"),
+        contract.payment_method,
+    )
 
-    if not (
-        proveedor_id
-        and titulo
-        and obra_id is not None
-        and obra_numero
-        and obra_nombre
-        and tipo_contrato
-        and usuario_creador_id
-    ):
+    missing_fields: list[str] = []
+    required_field_values = {
+        "titulo": titulo,
+        "numero_obra": obra_numero,
+        "nombre_obra": obra_nombre,
+        "tipo_contrato": tipo_contrato,
+        "tenant_id": contract.tenant_id,
+        "usuario_creador_id": usuario_creador_id,
+    }
+    for field_name, field_value in required_field_values.items():
+        if field_value is None:
+            missing_fields.append(field_name)
+        elif isinstance(field_value, str) and not field_value.strip():
+            missing_fields.append(field_name)
+    if proveedor_id is None:
+        missing_fields.append("proveedor_id")
+    if missing_fields:
+        logger.info(
+            "comparatives_adapter op=build_v2_payload contract_id=%s tenant_id=%s missing_fields=%s",
+            contract.id,
+            contract.tenant_id,
+            missing_fields,
+        )
+
+    if any(field != "proveedor_id" for field in missing_fields):
         return None
 
     return ComparativoCreate(
         tenant_id=contract.tenant_id,
-        obra_id=obra_id,
         numero_obra=obra_numero,
         nombre_obra=obra_nombre,
         titulo=titulo,
         estado=EstadoComparativo.BORRADOR,
         tipo_contrato=tipo_contrato,
-        proveedor_id=int(proveedor_id),
+        proveedor_id=(int(proveedor_id) if proveedor_id is not None else None),
         usuario_creador_id=int(usuario_creador_id),
         usuario_actualizacion_id=user.id,
         nombre_contacto=_clean_optional_text(contract.supplier_contact_name),
         telefono_contacto=_clean_optional_text(contract.supplier_phone),
         email_contacto=_clean_optional_text(contract.supplier_email),
         duracion=_first_non_empty_text(contract.duration_text, contract.execution_duration),
-        forma_pago=_clean_optional_text(contract.payment_method),
+        forma_pago=forma_pago,
         terminos_pago=(str(contract.payment_days) if contract.payment_days is not None else None),
         numero_trabajadores_obra=contract.min_workers,
         descripcion_garantias=_clean_optional_text(contract.warranty_text),
@@ -385,11 +470,16 @@ def _build_v2_update_payload_from_contract(
     user: User,
 ) -> ComparativoUpdate:
     proveedor_id = _resolve_v2_proveedor_id_from_contract(session, contract)
-    obra_id, obra_numero, obra_nombre = _extract_contract_work_snapshot(contract)
+    obra_numero, obra_nombre = _extract_contract_work_snapshot(contract)
     tipo_contrato = _clean_optional_text(getattr(contract.type, "value", contract.type))
+    comparative_data = contract.comparative_data if isinstance(contract.comparative_data, dict) else {}
+    totales = comparative_data.get("totales") if isinstance(comparative_data.get("totales"), dict) else {}
+    forma_pago = _first_non_empty_text(
+        totales.get("forma_pago"),
+        contract.payment_method,
+    )
 
     return ComparativoUpdate(
-        obra_id=obra_id,
         numero_obra=obra_numero,
         nombre_obra=obra_nombre,
         titulo=_clean_optional_text(contract.title),
@@ -400,55 +490,681 @@ def _build_v2_update_payload_from_contract(
         telefono_contacto=_clean_optional_text(contract.supplier_phone),
         email_contacto=_clean_optional_text(contract.supplier_email),
         duracion=_first_non_empty_text(contract.duration_text, contract.execution_duration),
-        forma_pago=_clean_optional_text(contract.payment_method),
+        forma_pago=forma_pago,
         terminos_pago=(str(contract.payment_days) if contract.payment_days is not None else None),
         numero_trabajadores_obra=contract.min_workers,
         descripcion_garantias=_clean_optional_text(contract.warranty_text),
     )
 
 
-def _open_new_legacy_comparative_cycle(session: Session, contract: Contract) -> None:
-    try:
-        legacy_comparatives_service._open_new_comparative_cycle(session, contract)
-    except Exception as exc:  # noqa: BLE001
-        logger.warning(
-            "No se pudo abrir ciclo legacy de comparative approvals contract_id=%s: %s",
-            contract.id,
-            exc,
+def _normalize_lookup_token(value: object) -> Optional[str]:
+    cleaned = _clean_optional_text(value)
+    if not cleaned:
+        return None
+    return "".join(ch for ch in cleaned.upper() if ch.isalnum())
+
+
+def _safe_dict(value: object) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
+def _safe_list(value: object) -> list[Any]:
+    return value if isinstance(value, list) else []
+
+
+def _offer_display_name(offer: dict[str, Any]) -> Optional[str]:
+    return _first_non_empty_text(
+        offer.get("supplier_name"),
+        offer.get("offer_name"),
+        offer.get("empresa"),
+        offer.get("proveedor"),
+    )
+
+
+def _offer_identifier(offer: dict[str, Any]) -> Optional[str]:
+    raw_id = offer.get("id")
+    if raw_id is None:
+        return None
+    return str(raw_id)
+
+
+def _find_offer_by_selected_offer_id(
+    offers: list[dict[str, Any]],
+    *,
+    selected_offer_id: object,
+) -> Optional[dict[str, Any]]:
+    selected_offer_id_str = _clean_optional_text(str(selected_offer_id)) if selected_offer_id is not None else None
+    if not selected_offer_id_str:
+        return None
+    for offer in offers:
+        offer_id = _offer_identifier(offer)
+        if offer_id and offer_id == selected_offer_id_str:
+            return offer
+    return None
+
+
+def _resolve_selected_offer_id_from_contract(contract: Contract) -> Optional[str]:
+    comparative_data = _safe_dict(contract.comparative_data)
+    comparative_selected_offer_id = comparative_data.get("selected_offer_id")
+    if comparative_selected_offer_id is not None:
+        selected_offer_id = _clean_optional_text(str(comparative_selected_offer_id))
+        if selected_offer_id:
+            return selected_offer_id
+
+    legacy_selected_offer_id = getattr(contract, "selected_offer_id", None)
+    if legacy_selected_offer_id is not None:
+        selected_offer_id = _clean_optional_text(str(legacy_selected_offer_id))
+        if selected_offer_id:
+            return selected_offer_id
+
+    return None
+
+
+def _resolve_v2_proveedor_id_from_offer(
+    session: Session,
+    offer: dict[str, Any],
+) -> Optional[int]:
+    tax_id = normalize_tax_id(offer.get("supplier_tax_id"))
+    if tax_id:
+        stmt = text(
+            """
+            SELECT id
+            FROM proveedores
+            WHERE regexp_replace(UPPER(COALESCE(cif, '')), '[^A-Z0-9]', '', 'g') = :lookup_id
+            LIMIT 1
+            """
+        )
+        row = session.exec(stmt, params={"lookup_id": tax_id}).first()
+        proveedor_id = _int_from_row_value(row)
+        if proveedor_id is not None:
+            return proveedor_id
+
+    offer_name = _offer_display_name(offer)
+    lookup_name = _normalize_lookup_token(offer_name)
+    if not lookup_name:
+        return None
+
+    stmt = text(
+        """
+        SELECT id
+        FROM proveedores
+        WHERE regexp_replace(UPPER(COALESCE(razon_social, '')), '[^A-Z0-9]', '', 'g') = :lookup_name
+           OR regexp_replace(UPPER(COALESCE(empresa, '')), '[^A-Z0-9]', '', 'g') = :lookup_name
+        LIMIT 1
+        """
+    )
+    row = session.exec(stmt, params={"lookup_name": lookup_name}).first()
+    return _int_from_row_value(row)
+
+
+def _build_hito_payloads(
+    *,
+    tenant_id: int,
+    comparativo_id: int,
+    raw_hitos: object,
+) -> Optional[list[ComparativoHitoCreate]]:
+    if raw_hitos is None:
+        return None
+
+    if isinstance(raw_hitos, str):
+        resumen = _clean_optional_text(raw_hitos)
+        if not resumen:
+            return None
+        return [
+            ComparativoHitoCreate(
+                tenant_id=tenant_id,
+                comparativo_id=comparativo_id,
+                nombre_hito="Resumen",
+                descripcion_hito=resumen,
+                orden=0,
+            )
+        ]
+
+    if not isinstance(raw_hitos, list):
+        return None
+
+    payloads: list[ComparativoHitoCreate] = []
+    for idx, item in enumerate(raw_hitos):
+        if isinstance(item, str):
+            descripcion = _clean_optional_text(item)
+            if not descripcion:
+                continue
+            payloads.append(
+                ComparativoHitoCreate(
+                    tenant_id=tenant_id,
+                    comparativo_id=comparativo_id,
+                    nombre_hito=f"Hito {idx + 1}",
+                    descripcion_hito=descripcion,
+                    orden=idx,
+                )
+            )
+            continue
+
+        if not isinstance(item, dict):
+            continue
+
+        # Aliases del wizard (contract_data.additional.milestones_items):
+        #   name -> nombre, description -> descripcion, start -> fecha_inicio, end -> fecha_fin
+        nombre_hito = _first_non_empty_text(
+            item.get("nombre"),
+            item.get("titulo"),
+            item.get("concepto"),
+            item.get("name"),
+        )
+        descripcion_hito = _first_non_empty_text(
+            item.get("descripcion"),
+            item.get("observaciones"),
+            item.get("detalle"),
+            item.get("concepto"),
+            item.get("description"),
+        )
+        payloads.append(
+            ComparativoHitoCreate(
+                tenant_id=tenant_id,
+                comparativo_id=comparativo_id,
+                fecha_inicio=(
+                    item.get("fecha_inicio")
+                    or item.get("fecha_prevista")
+                    or item.get("start")
+                ),
+                fecha_fin=(
+                    item.get("fecha_fin")
+                    or item.get("fecha_vencimiento")
+                    or item.get("end")
+                ),
+                nombre_hito=nombre_hito or f"Hito {idx + 1}",
+                descripcion_hito=descripcion_hito,
+                orden=idx,
+            )
         )
 
+    return payloads
 
-def _sync_legacy_comparative_approval_state(
+
+def _build_offer_payload(
+    *,
+    tenant_id: int,
+    comparativo_id: int,
+    offer: dict[str, Any],
+    proveedor_id: Optional[int],
+    comparative_totals: dict[str, Any],
+) -> ComparativoOfertaAdjudicadaCreate:
+    return ComparativoOfertaAdjudicadaCreate(
+        tenant_id=tenant_id,
+        comparativo_id=comparativo_id,
+        proveedor_id=proveedor_id,
+        numero_oferta=_offer_identifier(offer),
+        empresa=_offer_display_name(offer),
+        telefono=_clean_optional_text(offer.get("supplier_phone")),
+        email=_clean_optional_text(offer.get("supplier_email")),
+        total_ofertado=offer.get("total_amount"),
+        total_ofertas_homogeneas=comparative_totals.get("total_ofertas_homogeneas"),
+        porcentaje_oferta_homogenea=comparative_totals.get(
+            "porcentaje_oferta_homogenea_precio_neto"
+        ),
+        observaciones_oferta=_clean_optional_text(comparative_totals.get("observaciones_oferta")),
+        garantias=_clean_optional_text(comparative_totals.get("garantias")),
+        retenciones=_clean_optional_text(comparative_totals.get("retenciones")),
+        plazos=_first_non_empty_text(offer.get("plazo"), comparative_totals.get("plazos")),
+        proveedor_observaciones=_clean_optional_text(offer.get("notes")),
+    )
+
+
+def _build_discarded_offer_payload(
+    *,
+    tenant_id: int,
+    comparativo_id: int,
+    offer: dict[str, Any],
+    proveedor_id: Optional[int],
+    comparative_totals: dict[str, Any],
+) -> ComparativoOfertaDescartadaCreate:
+    return ComparativoOfertaDescartadaCreate(
+        tenant_id=tenant_id,
+        comparativo_id=comparativo_id,
+        proveedor_id=proveedor_id,
+        numero_oferta=_offer_identifier(offer),
+        empresa=_offer_display_name(offer),
+        telefono=_clean_optional_text(offer.get("supplier_phone")),
+        email=_clean_optional_text(offer.get("supplier_email")),
+        total_ofertado=offer.get("total_amount"),
+        total_ofertas_homogeneas=comparative_totals.get("total_ofertas_homogeneas"),
+        porcentaje_oferta_homogenea=comparative_totals.get(
+            "porcentaje_oferta_homogenea_precio_neto"
+        ),
+        observaciones_oferta=_clean_optional_text(comparative_totals.get("observaciones_oferta")),
+        garantias=_clean_optional_text(comparative_totals.get("garantias")),
+        retenciones=_clean_optional_text(comparative_totals.get("retenciones")),
+        plazos=_first_non_empty_text(offer.get("plazo"), comparative_totals.get("plazos")),
+        proveedor_observaciones=_clean_optional_text(offer.get("notes")),
+    )
+
+
+def _build_partidas_for_offer(
+    *,
+    tenant_id: int,
+    selected_offer_id: object,
+    offer: dict[str, Any],
+    lines: list[dict[str, Any]],
+) -> list[ComparativoOfertaAdjudicadaPartidaCreate]:
+    provider_tokens = {
+        token
+        for token in (
+            _normalize_lookup_token(offer.get("supplier_name")),
+            _normalize_lookup_token(offer.get("offer_name")),
+            _normalize_lookup_token(offer.get("empresa")),
+            _normalize_lookup_token(offer.get("proveedor")),
+        )
+        if token
+    }
+    partidas: list[ComparativoOfertaAdjudicadaPartidaCreate] = []
+    for idx, line in enumerate(lines):
+        prices = _safe_list(line.get("prices"))
+        matching_price: Optional[dict[str, Any]] = None
+        for price in prices:
+            if not isinstance(price, dict):
+                continue
+            provider_token = _normalize_lookup_token(price.get("proveedor"))
+            if provider_token and provider_token in provider_tokens:
+                matching_price = price
+                break
+        if matching_price is None:
+            continue
+        partidas.append(
+            ComparativoOfertaAdjudicadaPartidaCreate(
+                tenant_id=tenant_id,
+                comparativo_oferta_adjudicada_id=0,
+                codigo_capitulo=_clean_optional_text(line.get("cod_capitulo")),
+                medicion=line.get("cantidad"),
+                unidad=_clean_optional_text(line.get("unidad")),
+                descripcion=_clean_optional_text(line.get("descripcion")),
+                precio=matching_price.get("precio_unitario"),
+                importe=matching_price.get("importe"),
+                orden=idx,
+            )
+        )
+    return partidas
+
+
+def _build_discarded_partidas_for_offer(
+    *,
+    tenant_id: int,
+    offer: dict[str, Any],
+    lines: list[dict[str, Any]],
+) -> list[ComparativoOfertaDescartadaPartidaCreate]:
+    provider_tokens = {
+        token
+        for token in (
+            _normalize_lookup_token(offer.get("supplier_name")),
+            _normalize_lookup_token(offer.get("offer_name")),
+            _normalize_lookup_token(offer.get("empresa")),
+            _normalize_lookup_token(offer.get("proveedor")),
+        )
+        if token
+    }
+    partidas: list[ComparativoOfertaDescartadaPartidaCreate] = []
+    for idx, line in enumerate(lines):
+        prices = _safe_list(line.get("prices"))
+        matching_price: Optional[dict[str, Any]] = None
+        for price in prices:
+            if not isinstance(price, dict):
+                continue
+            provider_token = _normalize_lookup_token(price.get("proveedor"))
+            if provider_token and provider_token in provider_tokens:
+                matching_price = price
+                break
+        if matching_price is None:
+            continue
+        partidas.append(
+            ComparativoOfertaDescartadaPartidaCreate(
+                tenant_id=tenant_id,
+                comparativo_oferta_descartada_id=0,
+                codigo_capitulo=_clean_optional_text(line.get("cod_capitulo")),
+                medicion=line.get("cantidad"),
+                unidad=_clean_optional_text(line.get("unidad")),
+                descripcion=_clean_optional_text(line.get("descripcion")),
+                precio=matching_price.get("precio_unitario"),
+                importe=matching_price.get("importe"),
+                orden=idx,
+            )
+        )
+    return partidas
+
+
+def _log_v2_children_sync(
+    *,
+    comparativo_id: int,
+    selected_offer_id: Optional[str],
+    hitos_count: int,
+    offers_count: int,
+    adjudicada_partidas_count: int,
+    descartadas_count: int,
+    descartadas_partidas_count: int,
+    skipped_reason: Optional[str] = None,
+) -> None:
+    logger.info(
+        (
+            "comparatives_adapter op=sync_v2_children comparativo_id=%s "
+            "selected_offer_id=%s hitos_count=%s offers_count=%s "
+            "adjudicada_partidas_count=%s descartadas_count=%s "
+            "descartadas_partidas_count=%s skipped_reason=%s"
+        ),
+        comparativo_id,
+        selected_offer_id or "",
+        hitos_count,
+        offers_count,
+        adjudicada_partidas_count,
+        descartadas_count,
+        descartadas_partidas_count,
+        skipped_reason or "",
+    )
+
+
+def _sync_v2_children_from_contract_comparative_data(
     session: Session,
     *,
     contract: Contract,
-    user: User,
-    approval_status: ApprovalStatus,
-    comment: Optional[str],
-    ensure_both_approved: bool = False,
+    comparativo_id: int,
+    tenant_id: int,
+    user_id: int,
 ) -> None:
-    branch = legacy_comparatives_service._resolve_comparative_branch(session, user)
-    contract_crud._upsert_approval(
+    comparative_data = _safe_dict(contract.comparative_data)
+    contract_data = _safe_dict(contract.contract_data)
+    totales = _safe_dict(comparative_data.get("totales"))
+    offers = [item for item in _safe_list(comparative_data.get("offers")) if isinstance(item, dict)]
+    lines = [item for item in _safe_list(comparative_data.get("lines")) if isinstance(item, dict)]
+    selected_offer_id = _resolve_selected_offer_id_from_contract(contract)
+
+    # `contract_data` lleva los datos del formulario de informacion del
+    # comparativo (wizard). Estructura observada en runtime:
+    #   contract_data.additional.milestones_items: list[{name,start,end,description}]
+    #   contract_data.economic.payment_method_agreed: str
+    cd_additional = _safe_dict(contract_data.get("additional"))
+    cd_economic = _safe_dict(contract_data.get("economic"))
+
+    comparativo = comparativos_v2_repo.obtener_comparativo_por_id(
+        session,
+        tenant_id=tenant_id,
+        comparativo_id=comparativo_id,
+    )
+    if comparativo is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Comparativo v2 no encontrado para sincronizar detalle.",
+        )
+
+    # forma_pago: 1º totales.forma_pago, 2º contract_data.economic.payment_method_agreed
+    forma_pago = _clean_optional_text(totales.get("forma_pago")) or _clean_optional_text(
+        cd_economic.get("payment_method_agreed")
+    )
+    if forma_pago and comparativo.forma_pago != forma_pago:
+        comparativos_v2_repo.actualizar_comparativo(
+            session,
+            comparativo=comparativo,
+            payload=ComparativoUpdate(
+                forma_pago=forma_pago,
+                usuario_actualizacion_id=user_id,
+            ),
+        )
+
+    # hitos: 1º totales.hitos (legacy / Excel / drafts), 2º contract_data.additional.milestones_items (wizard)
+    hitos_key_present = "hitos" in totales
+    raw_hitos = totales.get("hitos") if hitos_key_present else None
+    hitos_source = "totales"
+    if raw_hitos is None:
+        cd_milestones = cd_additional.get("milestones_items")
+        if isinstance(cd_milestones, list) and cd_milestones:
+            raw_hitos = cd_milestones
+            hitos_key_present = True
+            hitos_source = "contract_data.additional.milestones_items"
+    hitos_payload = _build_hito_payloads(
+        tenant_id=tenant_id,
+        comparativo_id=comparativo_id,
+        raw_hitos=raw_hitos,
+    )
+    hitos_count = 0
+    if hitos_key_present and hitos_payload is not None:
+        comparativos_v2_repo.reemplazar_hitos(
+            session,
+            tenant_id=tenant_id,
+            comparativo_id=comparativo_id,
+            hitos=hitos_payload,
+        )
+        hitos_count = len(hitos_payload)
+        logger.info(
+            "comparatives_adapter op=sync_v2_children comparativo_id=%s hitos_source=%s hitos_count=%s",
+            comparativo_id,
+            hitos_source,
+            hitos_count,
+        )
+    elif raw_hitos is None:
+        logger.info(
+            "comparatives_adapter op=sync_v2_children comparativo_id=%s skipped_hitos=true",
+            comparativo_id,
+        )
+
+    if not selected_offer_id:
+        _log_v2_children_sync(
+            comparativo_id=comparativo_id,
+            selected_offer_id=None,
+            hitos_count=hitos_count,
+            offers_count=len(offers),
+            adjudicada_partidas_count=0,
+            descartadas_count=0,
+            descartadas_partidas_count=0,
+            skipped_reason="missing_selected_offer_id",
+        )
+        logger.info(
+            "comparatives_adapter op=sync_v2_children skipped_offers reason=missing_selected_offer_id comparativo_id=%s",
+            comparativo_id,
+        )
+        return
+
+    selected_offer = _find_offer_by_selected_offer_id(
+        offers,
+        selected_offer_id=selected_offer_id,
+    )
+    if selected_offer is None:
+        _log_v2_children_sync(
+            comparativo_id=comparativo_id,
+            selected_offer_id=selected_offer_id,
+            hitos_count=hitos_count,
+            offers_count=len(offers),
+            adjudicada_partidas_count=0,
+            descartadas_count=0,
+            descartadas_partidas_count=0,
+            skipped_reason="selected_offer_id_not_found",
+        )
+        logger.info(
+            "comparatives_adapter op=sync_v2_children skipped_offers reason=selected_offer_id_not_found comparativo_id=%s selected_offer_id=%s",
+            comparativo_id,
+            selected_offer_id,
+        )
+        return
+
+    selected_proveedor_id = _resolve_v2_proveedor_id_from_offer(session, selected_offer)
+    if selected_proveedor_id is None:
+        logger.info(
+            "comparatives_adapter op=sync_v2_children comparativo_id=%s missing_provider_id=%s",
+            comparativo_id,
+            _offer_display_name(selected_offer) or "",
+        )
+    oferta_adjudicada_payload = _build_offer_payload(
+        tenant_id=tenant_id,
+        comparativo_id=comparativo_id,
+        offer=selected_offer,
+        proveedor_id=selected_proveedor_id,
+        comparative_totals=totales,
+    )
+    oferta_adjudicada_model = comparativos_v2_repo.guardar_oferta_adjudicada(
+        session,
+        tenant_id=tenant_id,
+        comparativo_id=comparativo_id,
+        payload=oferta_adjudicada_payload,
+    )
+    adjudicada_partidas = _build_partidas_for_offer(
+        tenant_id=tenant_id,
+        selected_offer_id=selected_offer_id,
+        offer=selected_offer,
+        lines=lines,
+    )
+    comparativos_v2_repo.reemplazar_partidas_oferta_adjudicada(
+        session,
+        tenant_id=tenant_id,
+        comparativo_oferta_adjudicada_id=oferta_adjudicada_model.id,
+        partidas=adjudicada_partidas,
+    )
+
+    comparativos_v2_repo.reemplazar_ofertas_descartadas(
+        session,
+        tenant_id=tenant_id,
+        comparativo_id=comparativo_id,
+    )
+    discarded_offers = [
+        offer
+        for offer in offers
+        if _offer_identifier(offer) and _offer_identifier(offer) != selected_offer_id
+    ]
+    descartadas_partidas_count = 0
+    for discarded_offer in discarded_offers:
+        proveedor_id = _resolve_v2_proveedor_id_from_offer(session, discarded_offer)
+        if proveedor_id is None:
+            logger.info(
+                "comparatives_adapter op=sync_v2_children comparativo_id=%s missing_provider_id=%s",
+                comparativo_id,
+                _offer_display_name(discarded_offer) or "",
+            )
+        oferta_descartada_model = comparativos_v2_repo.guardar_oferta_descartada(
+            session,
+            tenant_id=tenant_id,
+            comparativo_id=comparativo_id,
+            payload=_build_discarded_offer_payload(
+                tenant_id=tenant_id,
+                comparativo_id=comparativo_id,
+                offer=discarded_offer,
+                proveedor_id=proveedor_id,
+                comparative_totals=totales,
+            ),
+        )
+        partidas_descartadas = _build_discarded_partidas_for_offer(
+            tenant_id=tenant_id,
+            offer=discarded_offer,
+            lines=lines,
+        )
+        comparativos_v2_repo.reemplazar_partidas_oferta_descartada(
+            session,
+            tenant_id=tenant_id,
+            comparativo_oferta_descartada_id=oferta_descartada_model.id,
+            partidas=partidas_descartadas,
+        )
+        descartadas_partidas_count += len(partidas_descartadas)
+
+    hitos_count = len(
+        comparativos_v2_repo.obtener_hitos_por_comparativo(
+            session,
+            tenant_id=tenant_id,
+            comparativo_id=comparativo_id,
+        )
+    )
+    adjudicada_count = 1 if comparativos_v2_repo.obtener_oferta_adjudicada_por_comparativo(
+        session,
+        tenant_id=tenant_id,
+        comparativo_id=comparativo_id,
+    ) else 0
+    descartadas_models = comparativos_v2_repo.obtener_ofertas_descartadas_por_comparativo(
+        session,
+        tenant_id=tenant_id,
+        comparativo_id=comparativo_id,
+    )
+    _log_v2_children_sync(
+        comparativo_id=comparativo_id,
+        selected_offer_id=selected_offer_id,
+        hitos_count=hitos_count,
+        offers_count=len(offers),
+        adjudicada_partidas_count=len(adjudicada_partidas),
+        descartadas_count=len(descartadas_models) if adjudicada_count >= 0 else 0,
+        descartadas_partidas_count=descartadas_partidas_count,
+    )
+
+
+def sync_v2_children_from_contract(
+    session: Session,
+    *,
+    contract_id: int,
+    tenant_id: int,
+    user: User,
+) -> Contract:
+    ensure_tenant_access(user, tenant_id)
+    contract = _get_contract_or_404(session, contract_id, tenant_id)
+    comparativo_id = _get_v2_comparativo_id_from_contract(contract)
+    if comparativo_id is None:
+        _log_adapter_path(
+            "sync_v2_children_from_contract",
+            contract_id=contract.id,
+            tenant_id=tenant_id,
+            path="legacy",
+            note="no_v2_link_skip_children_sync",
+        )
+        return contract
+    _sync_v2_children_from_contract_comparative_data(
         session,
         contract=contract,
-        department=branch,
-        status=approval_status,
-        decided_by_id=user.id,
-        comment=comment,
-        scope=ApprovalScope.COMPARATIVE,
+        comparativo_id=comparativo_id,
+        tenant_id=tenant_id,
+        user_id=user.id,
     )
-    if not ensure_both_approved:
-        return
-    for department in (ContractDepartment.OBRA, ContractDepartment.GERENCIA):
-        contract_crud._upsert_approval(
-            session,
-            contract=contract,
-            department=department,
-            status=ApprovalStatus.APPROVED,
-            decided_by_id=user.id,
-            comment=comment,
-            scope=ApprovalScope.COMPARATIVE,
-        )
+    session.commit()
+    session.refresh(contract)
+    return contract
+
+
+
+
+def _resolver_aprobadores_v2(
+    session: Session,
+    *,
+    tenant_id: int,
+    creador_id: int,
+) -> list[dict[str, Any]]:
+    """Construye las 2 aprobaciones del flujo: Director Técnico del creador + Gerencia (sin asignar).
+
+    - Obra: busca el director_tecnico_id del perfil del creador. Si existe y tiene
+      can_approve_comparative, lo asigna. Si no, deja usuario_aprobador_id=None.
+    - Gerencia: siempre una aprobación sin usuario asignado; cualquier Gerencia
+      con can_approve_comparative puede resolverla.
+    """
+    # Buscar el Director Técnico asignado al creador
+    dt_user_id: Optional[int] = None
+    dt_row = session.exec(
+        text("""
+            SELECT dt_ep.user_id
+            FROM employeeprofile ep
+            JOIN employeeprofile dt_ep ON dt_ep.id = ep.director_tecnico_id
+            JOIN position dt_pos ON dt_pos.id = dt_ep.position_id
+            WHERE ep.user_id = :creador_id
+              AND ep.tenant_id = :tenant_id
+              AND ep.is_active = TRUE
+              AND dt_ep.is_active = TRUE
+              AND dt_pos.can_approve_comparative = TRUE
+              AND dt_pos.is_active = TRUE
+            LIMIT 1
+        """),
+        params={"creador_id": creador_id, "tenant_id": tenant_id},
+    ).first()
+    if dt_row:
+        dt_user_id = int(dt_row[0])
+
+    return [
+        {
+            "usuario_aprobador_id": dt_user_id,
+            "rol_aprobador": "Obra",
+            "orden_aprobacion": 0,
+        },
+        {
+            "usuario_aprobador_id": None,
+            "rol_aprobador": "Gerencia",
+            "orden_aprobacion": 0,
+        },
+    ]
 
 
 def get_comparative_offers(
@@ -464,6 +1180,80 @@ def get_comparative_offers(
         tenant_id=tenant_id,
         user=user,
     )
+
+
+def ensure_v2_draft_link(
+    session: Session,
+    *,
+    contract_id: int,
+    tenant_id: int,
+    user: User,
+    comment: Optional[str] = None,
+    raise_on_error: bool = False,
+) -> Contract:
+    ensure_tenant_access(user, tenant_id)
+    contract = _get_contract_or_404(session, contract_id, tenant_id)
+    existing_v2_id = _get_v2_comparativo_id_from_contract(contract)
+    if existing_v2_id is not None:
+        _log_adapter_path(
+            "ensure_v2_draft_link",
+            contract_id=contract.id,
+            tenant_id=tenant_id,
+            path="v2",
+            comparativo_id=existing_v2_id,
+            note="already_has_v2_link",
+        )
+        return contract
+
+    payload = _build_v2_create_payload_from_contract(
+        session,
+        contract=contract,
+        user=user,
+    )
+    if payload is None:
+        _log_adapter_path(
+            "ensure_v2_draft_link",
+            contract_id=contract.id,
+            tenant_id=tenant_id,
+            path="legacy_fallback",
+            note="missing_data_for_v2_create",
+        )
+        return contract
+
+    v2_service = ComparativosV2Service(session)
+    try:
+        detalle = v2_service.crear_comparativo(
+            tenant_id=tenant_id,
+            payload=payload,
+            usuario_id=user.id,
+            comentario_historial=comment
+            or "Comparativo creado desde adapter legacy para mantener vinculo v2.",
+        )
+        _set_v2_comparativo_id_on_contract(session, contract, detalle.comparativo.id)
+        _sync_contract_from_v2_detail(session, contract, detalle)
+        session.commit()
+        session.refresh(contract)
+        _log_adapter_path(
+            "ensure_v2_draft_link",
+            contract_id=contract.id,
+            tenant_id=tenant_id,
+            path="v2",
+            comparativo_id=detalle.comparativo.id,
+            note="created_v2_link",
+        )
+        return contract
+    except DomainError as exc:
+        session.rollback()
+        _log_adapter_path(
+            "ensure_v2_draft_link",
+            contract_id=contract.id,
+            tenant_id=tenant_id,
+            path="legacy_fallback",
+            note=f"domain_error_{exc.message}",
+        )
+        if raise_on_error:
+            raise _domain_error_to_http_exception(exc) from exc
+        return contract
 
 
 def save_draft(
@@ -554,6 +1344,13 @@ def save_draft(
             ),
             usuario_id=user.id,
             comentario_historial="Sincronizacion de borrador desde contrato legacy.",
+        )
+        _sync_v2_children_from_contract_comparative_data(
+            session,
+            contract=contract,
+            comparativo_id=v2_comparativo_id,
+            tenant_id=tenant_id,
+            user_id=user.id,
         )
         _sync_contract_from_v2_detail(session, contract, detalle)
         session.commit()
@@ -708,17 +1505,26 @@ def submit(
             note="using_existing_v2_link",
         )
 
+    _sync_v2_children_from_contract_comparative_data(
+        session,
+        contract=contract,
+        comparativo_id=v2_comparativo_id,
+        tenant_id=tenant_id,
+        user_id=user.id,
+    )
+
+    aprobadores = _resolver_aprobadores_v2(session, tenant_id=tenant_id, creador_id=contract.created_by_id or user.id)
     try:
         detalle = v2_service.enviar_a_aprobacion(
             tenant_id=tenant_id,
             comparativo_id=v2_comparativo_id,
             usuario_id=user.id,
+            aprobadores_iniciales=aprobadores or None,
         )
     except DomainError as exc:
         raise _domain_error_to_http_exception(exc) from exc
 
     _sync_contract_from_v2_detail(session, contract, detalle)
-    _open_new_legacy_comparative_cycle(session, contract)
     session.commit()
     session.refresh(contract)
     return contract
@@ -838,17 +1644,6 @@ def approve(
         raise _domain_error_to_http_exception(exc) from exc
 
     _sync_contract_from_v2_detail(session, contract, detalle)
-    _sync_legacy_comparative_approval_state(
-        session,
-        contract=contract,
-        user=user,
-        approval_status=ApprovalStatus.APPROVED,
-        comment=comment,
-        ensure_both_approved=(
-            _map_v2_estado_to_legacy_comparative_status(detalle.comparativo.estado)
-            == ComparativeStatus.APPROVED
-        ),
-    )
     session.commit()
     session.refresh(contract)
     return contract
@@ -930,13 +1725,6 @@ def reject(
         raise _domain_error_to_http_exception(exc) from exc
 
     _sync_contract_from_v2_detail(session, contract, detalle)
-    _sync_legacy_comparative_approval_state(
-        session,
-        contract=contract,
-        user=user,
-        approval_status=ApprovalStatus.REJECTED,
-        comment=reason_clean,
-    )
     session.commit()
     session.refresh(contract)
     return contract
@@ -1017,13 +1805,6 @@ def return_comparative(
         raise _domain_error_to_http_exception(exc) from exc
 
     _sync_contract_from_v2_detail(session, contract, detalle)
-    _sync_legacy_comparative_approval_state(
-        session,
-        contract=contract,
-        user=user,
-        approval_status=ApprovalStatus.REJECTED,
-        comment=f"[Devolucion] {comment_clean}",
-    )
     session.commit()
     session.refresh(contract)
     return contract

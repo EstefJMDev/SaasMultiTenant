@@ -165,18 +165,27 @@ def normalize_comparative_json(raw: Dict[str, Any], fallback_text: str = "") -> 
         "precios_minimos": [],
         "costes_directos_total": as_amount(raw.get("costes_directos_total")),
         "precio_venta_total": as_amount(raw.get("precio_venta_total")),
+        # `totales` solo lleva las claves con valor real. No materializamos
+        # claves a None para que downstream (sync v2, helpers de merge,
+        # consumidores del JSON) puedan distinguir "no hay dato" (clave
+        # ausente) de "valor explicito null". Si el origen aporta un valor,
+        # la clave aparece; si no, se omite.
         "totales": {
-            "total_ofertado_proveedor": as_amount(totales.get("total_ofertado_proveedor")),
-            "total_ofertas_homogeneas": as_amount(totales.get("total_ofertas_homogeneas")),
-            "porcentaje_oferta_homogenea_precio_neto": as_amount(
-                totales.get("porcentaje_oferta_homogenea_precio_neto")
-            ),
-            "forma_pago": as_str(totales.get("forma_pago")),
-            "observaciones_oferta": as_str(totales.get("observaciones_oferta")),
-            "garantias": as_str(totales.get("garantias")),
-            "retenciones": as_str(totales.get("retenciones")),
-            "plazos": as_str(totales.get("plazos")),
-            "hitos": as_str(totales.get("hitos")),
+            k: v
+            for k, v in {
+                "total_ofertado_proveedor": as_amount(totales.get("total_ofertado_proveedor")),
+                "total_ofertas_homogeneas": as_amount(totales.get("total_ofertas_homogeneas")),
+                "porcentaje_oferta_homogenea_precio_neto": as_amount(
+                    totales.get("porcentaje_oferta_homogenea_precio_neto")
+                ),
+                "forma_pago": as_str(totales.get("forma_pago")),
+                "observaciones_oferta": as_str(totales.get("observaciones_oferta")),
+                "garantias": as_str(totales.get("garantias")),
+                "retenciones": as_str(totales.get("retenciones")),
+                "plazos": as_str(totales.get("plazos")),
+                "hitos": as_str(totales.get("hitos")),
+            }.items()
+            if v is not None
         },
         "firmas": {
             "firmante_jo": as_str(firmas.get("firmante_jo")),

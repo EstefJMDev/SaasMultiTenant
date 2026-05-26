@@ -27,6 +27,46 @@ from app.domains.procurement.workflow import approvals as workflow_approvals
 logger = logging.getLogger("app.platform.contracts_core")
 
 
+def _resolve_v2_comparativo_id_for_guard(contract: Contract) -> int | None:
+    """Lee comparative_data._v2.comparativo_id con manejo robusto de tipos."""
+    data = contract.comparative_data
+    if not isinstance(data, dict):
+        return None
+    v2_meta = data.get("_v2")
+    if not isinstance(v2_meta, dict):
+        return None
+    raw = v2_meta.get("comparativo_id")
+    try:
+        return int(raw) if raw is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _approved_roles_from_v2(
+    session: Session,
+    *,
+    tenant_id: int,
+    comparativo_id: int,
+) -> set[str]:
+    """Lee `comparativo_aprobaciones` v2 y devuelve los roles APROBADO
+    normalizados al formato legacy (OBRA/GERENCIA en uppercase).
+    """
+    from app.domains.procurement.comparativos_v2 import repo as v2_repo
+    from app.domains.procurement.workflow.approvals import _normalize_role_for_legacy_ui
+
+    rows = v2_repo.obtener_aprobaciones_por_comparativo(
+        session,
+        tenant_id=tenant_id,
+        comparativo_id=comparativo_id,
+    )
+    approved: set[str] = set()
+    for row in rows:
+        estado_value = str(getattr(row.estado, "value", row.estado) or "")
+        if estado_value == "APROBADO":
+            approved.add(_normalize_role_for_legacy_ui(row.rol_aprobador))
+    return approved
+
+
 def _comparative_status_with_guard(
     session: Session,
     contract: Contract,
@@ -37,10 +77,36 @@ def _comparative_status_with_guard(
 
     Tapa cualquier escritura previa incorrecta y evita que el listado pinte
     'Aprobado' cuando solo una de las dos partes ha aprobado.
+
+    Para comparativos vinculados a v2 (`_v2.comparativo_id` presente), la
+    fuente de verdad es `comparativo_aprobaciones` (no `contract_approval`
+    legacy, que queda vacio en el flujo v2). Para contratos legacy puros
+    se mantiene la lectura de `contract_approval`.
     """
     raw = getattr(payload_status, "value", payload_status)
     if str(raw or "").strip().upper() != ComparativeStatus.APPROVED.value:
         return payload_status
+
+    required = {ContractDepartment.OBRA.value, ContractDepartment.GERENCIA.value}
+
+    v2_comparativo_id = _resolve_v2_comparativo_id_for_guard(contract)
+    if v2_comparativo_id is not None:
+        try:
+            approved_roles = _approved_roles_from_v2(
+                session,
+                tenant_id=contract.tenant_id,
+                comparativo_id=v2_comparativo_id,
+            )
+        except Exception:
+            logger.warning(
+                "Read-time comparative guard v2 fallback contract_id=%s",
+                getattr(contract, "id", None),
+            )
+            return payload_status
+        if required.issubset(approved_roles):
+            return payload_status
+        return ComparativeStatus.PENDING_MGMT_APPROVAL
+
     try:
         max_cycle = session.exec(
             select(ContractApproval.cycle_number).where(
@@ -71,7 +137,6 @@ def _comparative_status_with_guard(
     for row in rows:
         if row.status == ApprovalStatus.APPROVED and row.approver_role:
             approved_roles.add(row.approver_role)
-    required = {ContractDepartment.OBRA.value, ContractDepartment.GERENCIA.value}
     if required.issubset(approved_roles):
         return payload_status
     return ComparativeStatus.PENDING_MGMT_APPROVAL

@@ -64,9 +64,7 @@ class Comparativo(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     tenant_id: int = Field(foreign_key="tenant.id", index=True)
 
-    # Obra / proyecto. FK opcional a la tabla erp_project existente y snapshot
-    # de numero/nombre por si la obra cambia o se borra.
-    obra_id: Optional[int] = Field(default=None, foreign_key="erp_project.id", index=True)
+    # Snapshot de obra en texto para no depender de FK ni de cambios en ERP.
     numero_obra: Optional[str] = Field(default=None, max_length=64)
     nombre_obra: Optional[str] = Field(default=None, max_length=255)
 
@@ -78,12 +76,12 @@ class Comparativo(SQLModel, table=True):
     )
     tipo_contrato: Optional[str] = Field(default=None, max_length=32, index=True)
 
-    # FK real a tabla maestra `proveedores` (BIGINT). No es SQLModel.
-    proveedor_id: int = Field(
+    # FK opcional a `proveedores` durante BORRADOR; se exige antes de enviar.
+    proveedor_id: Optional[int] = Field(
         sa_column=Column(
             BigInteger,
             ForeignKey("proveedores.id"),
-            nullable=False,
+            nullable=True,
             index=True,
         ),
     )
@@ -419,9 +417,6 @@ class Contrato(SQLModel, table=True):
         default=None, foreign_key="comparativos.id", index=True
     )
 
-    obra_id: Optional[int] = Field(
-        default=None, foreign_key="erp_project.id", index=True
-    )
     numero_obra: Optional[str] = Field(default=None, max_length=64)
     nombre_obra: Optional[str] = Field(default=None, max_length=255)
 

@@ -148,6 +148,21 @@ async def import_comparative_excel_endpoint(
         # el comparativo queda creado con el JSON parseado (fallback).
         pass
 
+    contract = comparatives_service.ensure_v2_draft_link(
+        session=session,
+        contract_id=contract.id,
+        tenant_id=tenant_id,
+        user=current_user,
+        comment="Comparativo v2 creado al importar Excel desde endpoint legacy.",
+        raise_on_error=False,
+    )
+    contract = comparatives_service.sync_v2_children_from_contract(
+        session=session,
+        contract_id=contract.id,
+        tenant_id=tenant_id,
+        user=current_user,
+    )
+
     return contracts_service.build_read(session, contract)
 
 
@@ -237,6 +252,16 @@ async def replace_comparative_source_endpoint(
     )
 
     merged = dict(parsed or {})
+    existing = dict(contract.comparative_data or {})
+    existing_v2 = existing.get("_v2")
+    incoming_v2 = merged.get("_v2")
+    if isinstance(existing_v2, dict):
+        if isinstance(incoming_v2, dict):
+            v2_merged = dict(existing_v2)
+            v2_merged.update(incoming_v2)
+            merged["_v2"] = v2_merged
+        else:
+            merged["_v2"] = dict(existing_v2)
     merged["source_file_path"] = str(saved_path)
     merged["source_filename"] = file.filename
     contract.comparative_data = merged
@@ -467,4 +492,3 @@ def return_comparative_endpoint(
         comment=payload.comment,
     )
     return contracts_service.build_read(session, contract)
-

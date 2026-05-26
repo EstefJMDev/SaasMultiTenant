@@ -423,6 +423,126 @@ def _resolve_user_departments(
     }
 
 
+_V2_ESTADO_TO_LEGACY_STATUS = {
+    "PENDIENTE": ApprovalStatus.PENDING,
+    "APROBADO": ApprovalStatus.APPROVED,
+    "RECHAZADO": ApprovalStatus.REJECTED,
+    "OMITIDO": ApprovalStatus.REJECTED,
+    "CADUCADO": ApprovalStatus.REJECTED,
+}
+
+# El frontend (ContractsModule.tsx ~ L11727) clasifica las aprobaciones por
+# `department === "OBRA"` / `"GERENCIA"` (uppercase, sin acentos). v2
+# almacena el `rol_aprobador` en forma libre ("Obra", "Gerencia", "Director
+# Tecnico", etc.). Normalizamos antes de devolverlo al frontend para
+# preservar la clasificacion legacy del timeline.
+def _normalize_role_for_legacy_ui(rol: Optional[str]) -> str:
+    if not rol:
+        return ""
+    raw = rol.strip()
+    # Quita acentos rapido sin importar unicodedata aqui.
+    cleaned = (
+        raw.lower()
+        .replace("á", "a")
+        .replace("é", "e")
+        .replace("í", "i")
+        .replace("ó", "o")
+        .replace("ú", "u")
+        .replace("ñ", "n")
+    )
+    if cleaned == "obra" or cleaned == "director tecnico" or cleaned == "director_tecnico":
+        return "OBRA"
+    if cleaned == "gerencia":
+        return "GERENCIA"
+    return raw.upper()
+
+
+def _resolve_v2_comparativo_id(contract: Contract) -> Optional[int]:
+    """Devuelve comparativo_id v2 leyendo contract.comparative_data['_v2'].
+
+    None si el contrato es legacy puro (sin entrada _v2).
+    """
+    data = contract.comparative_data
+    if not isinstance(data, dict):
+        return None
+    v2_meta = data.get("_v2")
+    if not isinstance(v2_meta, dict):
+        return None
+    raw = v2_meta.get("comparativo_id")
+    try:
+        return int(raw) if raw is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _get_comparative_approvals_from_v2(
+    session: Session,
+    *,
+    contract: Contract,
+    comparativo_id: int,
+    tenant_id: int,
+) -> list[dict[str, Any]]:
+    """Construye la lista de aprobaciones del comparativo leyendo de v2.
+
+    Devuelve el mismo shape que la version legacy para no romper el
+    frontend. Mientras v2 no implemente ciclos, todas las filas usan
+    cycle_number=1.
+    """
+    from app.domains.procurement.comparativos_v2 import repo as v2_repo
+
+    rows = v2_repo.obtener_aprobaciones_por_comparativo(
+        session,
+        tenant_id=tenant_id,
+        comparativo_id=comparativo_id,
+    )
+    user_ids = sorted(
+        {int(row.usuario_aprobador_id) for row in rows if row.usuario_aprobador_id is not None}
+    )
+    names: dict[int, str] = {}
+    if user_ids:
+        name_rows = session.exec(
+            select(User.id, User.full_name).where(User.id.in_(user_ids))
+        ).all()
+        names = {int(row[0]): row[1] for row in name_rows}
+    departments = _resolve_user_departments(session, user_ids, tenant_id)
+
+    payload: list[dict[str, Any]] = []
+    for row in rows:
+        # estado puede llegar como Enum (EstadoAprobacionComparativo) o como
+        # string crudo desde BD. Normalizamos siempre a string para que el
+        # mapeo y la comparacion sean robustos.
+        estado_value = str(getattr(row.estado, "value", row.estado) or "")
+        legacy_status = _V2_ESTADO_TO_LEGACY_STATUS.get(
+            estado_value, ApprovalStatus.PENDING
+        )
+        decided_by_id = (
+            row.usuario_aprobador_id
+            if estado_value != "PENDIENTE" and row.fecha_resolucion is not None
+            else None
+        )
+        payload.append(
+            {
+                "id": row.id,
+                "tenant_id": row.tenant_id,
+                "contract_id": contract.id,
+                "department": _normalize_role_for_legacy_ui(row.rol_aprobador),
+                "status": legacy_status,
+                "cycle_number": 1,
+                "created_at": row.fecha_creacion,
+                "decided_by_id": decided_by_id,
+                "decided_by_name": names.get(decided_by_id)
+                if decided_by_id is not None
+                else None,
+                "decided_by_department": departments.get(decided_by_id)
+                if decided_by_id is not None
+                else None,
+                "decided_at": row.fecha_resolucion,
+                "comment": row.comentario,
+            }
+        )
+    return payload
+
+
 def get_contract_comparative_approvals(
     session: Session,
     *,
@@ -452,6 +572,20 @@ def get_contract_comparative_approvals(
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN, detail="Sin permisos"
                 )
+
+    # Camino H: si el contrato esta sincronizado con v2, leer las
+    # aprobaciones de `comparativo_aprobaciones` en lugar de la tabla
+    # legacy `contract_approval`. El shape devuelto es el mismo para no
+    # romper el frontend. Fallback a legacy si no hay _v2.
+    v2_comparativo_id = _resolve_v2_comparativo_id(contract)
+    if v2_comparativo_id is not None:
+        return _get_comparative_approvals_from_v2(
+            session,
+            contract=contract,
+            comparativo_id=v2_comparativo_id,
+            tenant_id=contract.tenant_id,
+        )
+
     rows = list(
         session.exec(
             select(ContractApproval).where(
