@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 import logging
 import unicodedata
 from typing import Any, Optional, Sequence
@@ -15,7 +15,16 @@ from app.platform.contracts_core.comparativos_enums import (
     EstadoAprobacionComparativo,
     EstadoComparativo,
 )
-from app.platform.contracts_core.comparativos_models import Comparativo, ComparativoAprobacion
+from app.platform.contracts_core.comparativos_models import (
+    Comparativo,
+    ComparativoAprobacion,
+    ComparativoHito,
+    ComparativoOfertaAdjudicada,
+    ComparativoOfertaAdjudicadaPartida,
+    Contrato,
+    ContratoOfertaAdjudicada,
+    ContratoOfertaAdjudicadaPartida,
+)
 from app.platform.contracts_core.comparativos_schemas import (
     ComparativoAprobacionRead,
     ComparativoCreate,
@@ -1255,6 +1264,210 @@ class ComparativosV2Service:
         token = self._normalize_text_token(tipo_contrato).replace(" ", "_").upper()
         return token in _TIPOS_CONTRATO_REQUIEREN_PARTIDAS
 
+    def _to_optional_text(self, value: Any) -> Optional[str]:
+        if value is None:
+            return None
+        text = str(value).strip()
+        return text or None
+
+    def _to_optional_int(self, value: Any) -> Optional[int]:
+        if value is None or value == "":
+            return None
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
+
+    def _to_optional_iso_date(self, value: Any) -> Optional[str]:
+        if value is None:
+            return None
+        if isinstance(value, datetime):
+            return value.date().isoformat()
+        if isinstance(value, date):
+            return value.isoformat()
+        return self._to_optional_text(value)
+
+    def _merge_missing_values(
+        self,
+        *,
+        base: Optional[dict[str, Any]],
+        seed: dict[str, Any],
+    ) -> tuple[dict[str, Any], bool]:
+        merged = dict(base or {})
+        changed = False
+        for key, value in seed.items():
+            if value is None:
+                continue
+            existing = merged.get(key)
+            if existing is None or (isinstance(existing, str) and not existing.strip()):
+                merged[key] = value
+                changed = True
+        return merged, changed
+
+    def _build_datos_contractuales_seed(
+        self,
+        *,
+        comparativo: Comparativo,
+        oferta_adjudicada: ComparativoOfertaAdjudicada,
+    ) -> dict[str, Any]:
+        garantia_seed = self._to_optional_text(comparativo.descripcion_garantias) or self._to_optional_text(
+            oferta_adjudicada.garantias
+        )
+        return {
+            "tipo_servicio": self._to_optional_text(comparativo.condicion_ejecucion)
+            or self._to_optional_text(comparativo.descripcion_unidades_contratadas),
+            "promotora": None,
+            "duracion_obra": self._to_optional_text(comparativo.duracion)
+            or self._to_optional_text(oferta_adjudicada.plazos),
+            "fecha_inicio": self._to_optional_iso_date(comparativo.fecha_inicio),
+            "fecha_fin": self._to_optional_iso_date(comparativo.fecha_fin),
+            "fin_obra": self._to_optional_iso_date(comparativo.fecha_fin),
+            "portes": None,
+            "descargas": None,
+            "termino_pago": self._to_optional_text(comparativo.terminos_pago),
+            "garantia": garantia_seed,
+            "seguro": None,
+            "num_trabajadores": self._to_optional_int(comparativo.numero_trabajadores_obra),
+        }
+
+    def _build_condiciones_json_seed(
+        self,
+        *,
+        comparativo: Comparativo,
+        oferta_adjudicada: ComparativoOfertaAdjudicada,
+    ) -> dict[str, Any]:
+        return {
+            "tipo_servicio": self._to_optional_text(comparativo.condicion_ejecucion)
+            or self._to_optional_text(comparativo.descripcion_unidades_contratadas),
+            "promotora": None,
+            "duracion_obra": self._to_optional_text(comparativo.duracion)
+            or self._to_optional_text(oferta_adjudicada.plazos),
+            "portes": None,
+            "descargas": None,
+            "termino_pago": self._to_optional_text(comparativo.terminos_pago),
+            "garantia": self._to_optional_text(comparativo.descripcion_garantias)
+            or self._to_optional_text(oferta_adjudicada.garantias),
+            "seguro": None,
+            "num_trabajadores": self._to_optional_int(comparativo.numero_trabajadores_obra),
+            "fin_obra": self._to_optional_iso_date(comparativo.fecha_fin),
+        }
+
+    def _asegurar_snapshot_contrato_v2(
+        self,
+        *,
+        contrato: Contrato,
+        comparativo: Comparativo,
+        proveedor: dict[str, Any],
+        oferta_adjudicada: ComparativoOfertaAdjudicada,
+        partidas_adjudicadas: list[ComparativoOfertaAdjudicadaPartida],
+        hitos_origen: list[ComparativoHito],
+    ) -> tuple[ContratoOfertaAdjudicada, list[ContratoOfertaAdjudicadaPartida]]:
+        # 1) Cabecera: completar datos_contractuales_json solo con campos faltantes.
+        datos_seed = self._build_datos_contractuales_seed(
+            comparativo=comparativo,
+            oferta_adjudicada=oferta_adjudicada,
+        )
+        merged_datos, changed_datos = self._merge_missing_values(
+            base=contrato.datos_contractuales_json,
+            seed=datos_seed,
+        )
+        if changed_datos or contrato.datos_contractuales_json is None:
+            contrato.datos_contractuales_json = merged_datos
+            contrato.fecha_actualizacion = _utcnow()
+            self.session.add(contrato)
+            self.session.flush()
+
+        # 2) Snapshot proveedor: crear solo si no existe.
+        datos_proveedor = repo.obtener_datos_proveedor_por_contrato(
+            self.session,
+            tenant_id=comparativo.tenant_id,
+            contrato_id=contrato.id,
+        )
+        if datos_proveedor is None:
+            repo.crear_datos_proveedor_snapshot(
+                self.session,
+                tenant_id=comparativo.tenant_id,
+                contrato_id=contrato.id,
+                proveedor_id=int(comparativo.proveedor_id),
+                proveedor_data=proveedor,
+            )
+
+        # 3) Snapshot hitos: crear solo si no hay hitos en contrato.
+        hitos_existentes = repo.obtener_hitos_por_contrato(
+            self.session,
+            tenant_id=comparativo.tenant_id,
+            contrato_id=contrato.id,
+        )
+        if not hitos_existentes and hitos_origen:
+            repo.copiar_hitos_comparativo_a_contrato(
+                self.session,
+                tenant_id=comparativo.tenant_id,
+                contrato_id=contrato.id,
+                hitos_origen=hitos_origen,
+            )
+
+        # 4) Snapshot oferta: crear si no existe; si existe, completar condiciones faltantes.
+        oferta_snapshot = repo.obtener_oferta_adjudicada_por_contrato(
+            self.session,
+            tenant_id=comparativo.tenant_id,
+            contrato_id=contrato.id,
+        )
+        condiciones_seed = self._build_condiciones_json_seed(
+            comparativo=comparativo,
+            oferta_adjudicada=oferta_adjudicada,
+        )
+        if oferta_snapshot is None:
+            oferta_snapshot = repo.crear_oferta_adjudicada_snapshot_contrato(
+                self.session,
+                tenant_id=comparativo.tenant_id,
+                contrato_id=contrato.id,
+                comparativo=comparativo,
+                oferta_origen=oferta_adjudicada,
+                proveedor_data=proveedor,
+            )
+            merged_condiciones, _ = self._merge_missing_values(
+                base=oferta_snapshot.condiciones_json,
+                seed=condiciones_seed,
+            )
+            oferta_snapshot.condiciones_json = merged_condiciones
+            self.session.add(oferta_snapshot)
+            self.session.flush()
+        else:
+            changed_snapshot = False
+            merged_condiciones, condiciones_changed = self._merge_missing_values(
+                base=oferta_snapshot.condiciones_json,
+                seed=condiciones_seed,
+            )
+            if condiciones_changed:
+                oferta_snapshot.condiciones_json = merged_condiciones
+                changed_snapshot = True
+            if not oferta_snapshot.forma_pago and comparativo.forma_pago:
+                oferta_snapshot.forma_pago = comparativo.forma_pago
+                changed_snapshot = True
+            if not oferta_snapshot.plazo and oferta_adjudicada.plazos:
+                oferta_snapshot.plazo = oferta_adjudicada.plazos
+                changed_snapshot = True
+            if changed_snapshot:
+                oferta_snapshot.fecha_actualizacion = _utcnow()
+                self.session.add(oferta_snapshot)
+                self.session.flush()
+
+        # 5) Snapshot partidas: crear solo si no existen.
+        partidas_snapshot = repo.obtener_partidas_adjudicadas_por_contrato(
+            self.session,
+            tenant_id=comparativo.tenant_id,
+            contrato_id=contrato.id,
+        )
+        if not partidas_snapshot and partidas_adjudicadas:
+            partidas_snapshot = repo.crear_partidas_adjudicadas_snapshot_contrato(
+                self.session,
+                tenant_id=comparativo.tenant_id,
+                contrato_id=contrato.id,
+                contrato_oferta_adjudicada_id=oferta_snapshot.id,
+                partidas_origen=partidas_adjudicadas,
+            )
+        return oferta_snapshot, partidas_snapshot
+
     def _generar_contrato_desde_comparativo_impl(
         self,
         *,
@@ -1302,8 +1515,42 @@ class ComparativosV2Service:
                     linked_contract.fecha_actualizacion = _utcnow()
                     self.session.add(linked_contract)
                     self.session.flush()
+                if comparativo.proveedor_id is not None:
+                    proveedor_linked = repo.obtener_proveedor_por_id(
+                        self.session,
+                        proveedor_id=int(comparativo.proveedor_id),
+                    )
+                    oferta_linked = repo.obtener_oferta_adjudicada_por_comparativo(
+                        self.session,
+                        tenant_id=comparativo.tenant_id,
+                        comparativo_id=comparativo.id,
+                    )
+                    if proveedor_linked is not None and oferta_linked is not None:
+                        partidas_linked = repo.obtener_partidas_oferta_adjudicada(
+                            self.session,
+                            tenant_id=comparativo.tenant_id,
+                            comparativo_oferta_adjudicada_id=oferta_linked.id,
+                        )
+                        hitos_linked = repo.obtener_hitos_por_comparativo(
+                            self.session,
+                            tenant_id=comparativo.tenant_id,
+                            comparativo_id=comparativo.id,
+                        )
+                        self._asegurar_snapshot_contrato_v2(
+                            contrato=linked_contract,
+                            comparativo=comparativo,
+                            proveedor=proveedor_linked,
+                            oferta_adjudicada=oferta_linked,
+                            partidas_adjudicadas=partidas_linked,
+                            hitos_origen=hitos_linked,
+                        )
                 logger.info(
                     "comparativos_v2 op=generar_contrato comparativo_id=%s contrato_id=%s reused=link",
+                    comparativo.id,
+                    linked_contract.id,
+                )
+                logger.info(
+                    "comparativos_v2 op=reuse_existing_v2_contract comparativo_id=%s contrato_id=%s reason=link",
                     comparativo.id,
                     linked_contract.id,
                 )
@@ -1336,8 +1583,42 @@ class ComparativosV2Service:
                     comentario="Contrato v2 existente reutilizado y re-enlazado al comparativo.",
                     metadatos_json={"contrato_id": int(existing_contract.id), "reutilizado": True},
                 )
+            if comparativo.proveedor_id is not None:
+                proveedor_existing = repo.obtener_proveedor_por_id(
+                    self.session,
+                    proveedor_id=int(comparativo.proveedor_id),
+                )
+                oferta_existing = repo.obtener_oferta_adjudicada_por_comparativo(
+                    self.session,
+                    tenant_id=comparativo.tenant_id,
+                    comparativo_id=comparativo.id,
+                )
+                if proveedor_existing is not None and oferta_existing is not None:
+                    partidas_existing = repo.obtener_partidas_oferta_adjudicada(
+                        self.session,
+                        tenant_id=comparativo.tenant_id,
+                        comparativo_oferta_adjudicada_id=oferta_existing.id,
+                    )
+                    hitos_existing = repo.obtener_hitos_por_comparativo(
+                        self.session,
+                        tenant_id=comparativo.tenant_id,
+                        comparativo_id=comparativo.id,
+                    )
+                    self._asegurar_snapshot_contrato_v2(
+                        contrato=existing_contract,
+                        comparativo=comparativo,
+                        proveedor=proveedor_existing,
+                        oferta_adjudicada=oferta_existing,
+                        partidas_adjudicadas=partidas_existing,
+                        hitos_origen=hitos_existing,
+                    )
             logger.info(
                 "comparativos_v2 op=generar_contrato comparativo_id=%s contrato_id=%s reused=comparativo_id",
+                comparativo.id,
+                existing_contract.id,
+            )
+            logger.info(
+                "comparativos_v2 op=reuse_existing_v2_contract comparativo_id=%s contrato_id=%s reason=comparativo_id",
                 comparativo.id,
                 existing_contract.id,
             )
@@ -1388,47 +1669,34 @@ class ComparativosV2Service:
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
 
-        contrato = repo.crear_contrato_desde_comparativo(
-            self.session,
-            comparativo=comparativo,
-            usuario_id=usuario_id or comparativo.usuario_creador_id,
-        )
-
-        repo.crear_datos_proveedor_snapshot(
-            self.session,
-            tenant_id=comparativo.tenant_id,
-            contrato_id=contrato.id,
-            proveedor_id=int(comparativo.proveedor_id),
-            proveedor_data=proveedor,
-        )
-
         hitos_origen = repo.obtener_hitos_por_comparativo(
             self.session,
             tenant_id=comparativo.tenant_id,
             comparativo_id=comparativo.id,
         )
-        if hitos_origen:
-            repo.copiar_hitos_comparativo_a_contrato(
-                self.session,
-                tenant_id=comparativo.tenant_id,
-                contrato_id=contrato.id,
-                hitos_origen=hitos_origen,
-            )
-
-        oferta_snapshot = repo.crear_oferta_adjudicada_snapshot_contrato(
-            self.session,
-            tenant_id=comparativo.tenant_id,
-            contrato_id=contrato.id,
+        datos_contractuales_seed = self._build_datos_contractuales_seed(
             comparativo=comparativo,
-            oferta_origen=oferta_adjudicada,
-            proveedor_data=proveedor,
+            oferta_adjudicada=oferta_adjudicada,
         )
-        partidas_snapshot = repo.crear_partidas_adjudicadas_snapshot_contrato(
+        datos_contractuales_seed = {
+            key: value
+            for key, value in datos_contractuales_seed.items()
+            if value is not None
+        }
+        contrato = repo.crear_contrato_desde_comparativo(
             self.session,
-            tenant_id=comparativo.tenant_id,
-            contrato_id=contrato.id,
-            contrato_oferta_adjudicada_id=oferta_snapshot.id,
-            partidas_origen=partidas_adjudicadas,
+            comparativo=comparativo,
+            usuario_id=usuario_id or comparativo.usuario_creador_id,
+            datos_contractuales_json=datos_contractuales_seed or None,
+        )
+
+        oferta_snapshot, partidas_snapshot = self._asegurar_snapshot_contrato_v2(
+            contrato=contrato,
+            comparativo=comparativo,
+            proveedor=proveedor,
+            oferta_adjudicada=oferta_adjudicada,
+            partidas_adjudicadas=partidas_adjudicadas,
+            hitos_origen=hitos_origen,
         )
 
         repo.registrar_evento_historial_contrato(

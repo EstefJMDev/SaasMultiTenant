@@ -10,6 +10,7 @@ from app.platform.contracts_core.comparativos_enums import EstadoContrato
 from app.platform.contracts_core.comparativos_models import Contrato
 
 from . import repo
+from .context_builder import build_substitution_context_v2
 from .schemas import (
     ComparativoOrigenResumenRead,
     ContratoDatosProveedorV2Read,
@@ -346,3 +347,38 @@ class ContratosV2Service:
                 "No se pudo actualizar el contrato v2.",
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             ) from exc
+
+    def construir_contexto_plantilla(
+        self,
+        *,
+        tenant_id: int,
+        contrato_id: int,
+    ) -> dict[str, object]:
+        contrato = self._obtener_contrato_o_error(tenant_id=tenant_id, contrato_id=contrato_id)
+        datos_proveedor = repo.obtener_datos_proveedor_por_contrato(
+            self.session,
+            tenant_id=tenant_id,
+            contrato_id=contrato_id,
+        )
+        hitos = repo.obtener_hitos_por_contrato(
+            self.session,
+            tenant_id=tenant_id,
+            contrato_id=contrato_id,
+        )
+        oferta = repo.obtener_oferta_adjudicada_snapshot_por_contrato(
+            self.session,
+            tenant_id=tenant_id,
+            contrato_id=contrato_id,
+        )
+        partidas = repo.obtener_partidas_adjudicadas_snapshot_por_contrato(
+            self.session,
+            tenant_id=tenant_id,
+            contrato_id=contrato_id,
+        )
+        return build_substitution_context_v2(
+            contrato=contrato,
+            datos_proveedor=datos_proveedor,
+            hitos=hitos,
+            oferta_adjudicada=oferta,
+            partidas=partidas,
+        )
