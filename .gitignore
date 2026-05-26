@@ -60,6 +60,7 @@ deploy/data/**
 !deploy/data/**/.gitkeep
 
 db/backups/
+backups/
 *.dump
 *.backup
 *.tar
