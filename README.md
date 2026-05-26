@@ -55,3 +55,49 @@ Servicios:
 La documentacion completa esta en:
 
 - `docs/README.md`
+
+## Estructura en el servidor
+
+```
+/home/server/projects/plataforma-urdecon
+│
+├── repo/
+│   ├── backend-fastapi/
+│   ├── frontend-react/
+│   ├── agent-system/
+│   │
+│   ├── deploy/
+│   │   ├── compose/
+│   │   │   ├── docker-compose.yml
+│   │   │   ├── docker-compose.local.yml
+│   │   │   ├── docker-compose.staging.yml
+│   │   │   └── docker-compose.production.yml
+│   │   │
+│   │   └── env/
+│   │       ├── backend.example.env
+│   │       ├── compose.example.env
+│   │       └── frontend.example.env
+│   │
+│   ├── scripts/
+│   ├── docs/
+│   ├── README.md
+│   └── .gitignore
+│
+├── deployments/
+│   ├── staging/
+│   │   ├── env/
+│   │   │   ├── backend.env
+│   │   │   ├── frontend.env
+│   │   │   ├── cloudflared.env
+│   │   │   └── platform.env
+│   │   │
+│   │   ├── data/
+│   │   └── logs/
+│   │
+│   └── production/
+│       ├── env/
+│       ├── data/
+│       └── logs/
+│
+└── backups/
+```
