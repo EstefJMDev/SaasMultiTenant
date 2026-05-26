@@ -117,3 +117,13 @@ __pycache__/
 db/internal/
 db/scripts/proveedores.sql
 *.csv
+
+# Sensitive backups (root + nested)
+backups/
+**/backups/
+*.bak
+*.sql.bak
+*.sqlite
+*.db
+*.7z
+*.rar

@@ -916,6 +916,7 @@ def crear_contrato_desde_comparativo(
     *,
     comparativo: Comparativo,
     usuario_id: int,
+    datos_contractuales_json: Optional[dict[str, Any]] = None,
 ) -> Contrato:
     """Crea Contrato copiando los snapshots relevantes del comparativo.
 
@@ -928,6 +929,7 @@ def crear_contrato_desde_comparativo(
         nombre_obra=comparativo.nombre_obra,
         titulo=comparativo.titulo,
         tipo_contrato=comparativo.tipo_contrato,
+        datos_contractuales_json=datos_contractuales_json,
         proveedor_id=comparativo.proveedor_id,
         estado=EstadoContrato.BORRADOR.value,
         usuario_creador_id=usuario_id,

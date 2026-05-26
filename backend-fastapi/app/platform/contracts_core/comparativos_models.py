@@ -422,6 +422,10 @@ class Contrato(SQLModel, table=True):
 
     titulo: Optional[str] = Field(default=None, max_length=255)
     tipo_contrato: Optional[str] = Field(default=None, max_length=32, index=True)
+    datos_contractuales_json: Optional[dict] = Field(
+        default=None,
+        sa_column=Column(JSONB),
+    )
 
     proveedor_id: int = Field(
         sa_column=Column(

@@ -147,3 +147,13 @@ def ensure_comparativos_schema(inspector, table_names) -> None:
                         f"ON {table_name}(tenant_id)"
                     )
                 )
+
+        if "contratos" in table_names:
+            contratos_columns = {col["name"] for col in inspector.get_columns("contratos")}
+            if "datos_contractuales_json" not in contratos_columns:
+                conn.execute(
+                    text(
+                        "ALTER TABLE public.contratos "
+                        "ADD COLUMN IF NOT EXISTS datos_contractuales_json JSONB NULL"
+                    )
+                )
