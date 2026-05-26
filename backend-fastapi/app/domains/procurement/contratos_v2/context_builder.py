@@ -89,7 +89,7 @@ def _format_eur(value: Any) -> str:
         return ""
     rendered = f"{dec:,.2f}"
     rendered = rendered.replace(",", "X").replace(".", ",").replace("X", ".")
-    return f"{rendered} €"
+    return f"{rendered} EUR"
 
 
 def _format_qty(value: Any) -> str:
@@ -103,13 +103,13 @@ def _format_qty(value: Any) -> str:
 
 def _apocope_uno(text: str) -> str:
     result = text
-    result = result.replace(" veintiuno", " veintiún")
+    result = result.replace(" veintiuno", " veintiun")
     if result.endswith(" uno"):
         result = result[:-4] + " un"
     if result == "uno":
         result = "un"
     if result == "veintiuno":
-        result = "veintiún"
+        result = "veintiun"
     return result
 
 
@@ -130,7 +130,7 @@ def _amount_to_words_eur(value: Any) -> str:
     euro_unit = "EURO" if euros == 1 else "EUROS"
     out = f"{sign}{euros_text} {euro_unit}"
     if cents:
-        cent_unit = "CÉNTIMO" if cents == 1 else "CÉNTIMOS"
+        cent_unit = "CENTIMO" if cents == 1 else "CENTIMOS"
         out += f" CON {cents_text} {cent_unit}"
     return out
 
