@@ -1,4 +1,5 @@
 from __future__ import annotations
+import logging
 from pathlib import Path
 from typing import Any, Optional
 
@@ -12,7 +13,7 @@ from app.platform.contracts_core.models import (
     SignatureRequest,
     Supplier,
 )
-from app.platform.contracts_core.permissions import can_view_contract, ensure_tenant_access
+from app.platform.contracts_core.permissions import ensure_tenant_access
 from app.models.user import User
 
 from app.domains.procurement.documents import generator as documents_generator
@@ -20,6 +21,63 @@ from app.domains.procurement.documents import paths as documents_paths
 from app.domains.procurement.documents import repository as documents_repository
 from app.domains.procurement.documents import signatures as documents_signatures
 from app.domains.procurement.contracts import crud as contract_crud
+from app.domains.procurement.contracts import validators as contract_validators
+
+
+logger = logging.getLogger("app.procurement.documents.service")
+
+
+def _get_contract_for_document_access(
+    session: Session,
+    *,
+    contract_id: int,
+    tenant_id: int,
+    user: User,
+) -> Contract:
+    return contract_crud.get_contract(
+        session,
+        contract_id=contract_id,
+        tenant_id=tenant_id,
+        user=user,
+    )
+
+
+def _try_generate_contract_document_if_missing(
+    session: Session,
+    *,
+    contract: Contract,
+    user: User,
+) -> Optional[ContractDocument]:
+    if contract.template_id is None:
+        return None
+    try:
+        contract_crud.ensure_supplier_snapshot(session, contract=contract)
+        context = contract_validators.extract_context(contract)
+        return generate_contract_document(
+            session,
+            contract=contract,
+            context=context,
+            created_by_id=user.id,
+            auto_commit=True,
+        )
+    except HTTPException as exc:
+        logger.warning(
+            "On-demand document generation failed contract_id=%s tenant_id=%s detail=%s",
+            contract.id,
+            contract.tenant_id,
+            exc.detail,
+        )
+        session.rollback()
+        return None
+    except Exception as exc:
+        logger.exception(
+            "Unexpected on-demand document generation failure contract_id=%s tenant_id=%s: %s",
+            contract.id,
+            contract.tenant_id,
+            exc,
+        )
+        session.rollback()
+        return None
 
 def generate_contract_document(
     session: Session,
@@ -216,9 +274,12 @@ def list_contract_documents(
     user: User,
 ) -> list[ContractDocument]:
     ensure_tenant_access(user, tenant_id)
-    if not can_view_contract(session, user):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Sin permisos")
-    contract = contract_crud._get_contract_or_404(session, contract_id, tenant_id)
+    contract = _get_contract_for_document_access(
+        session,
+        contract_id=contract_id,
+        tenant_id=tenant_id,
+        user=user,
+    )
     docs = documents_repository.list_contract_documents(
         session,
         contract_id=contract_id,
@@ -238,18 +299,40 @@ def get_contract_document_by_type(
     user: User,
     doc_type: ContractDocumentType,
 ) -> ContractDocument:
-    docs = list_contract_documents(
+    contract = _get_contract_for_document_access(
         session,
         contract_id=contract_id,
         tenant_id=tenant_id,
         user=user,
     )
+    docs = documents_repository.list_contract_documents(
+        session,
+        contract_id=contract_id,
+        tenant_id=tenant_id,
+    )
     for doc in docs:
+        doc.path = documents_paths._public_contract_document_path(doc.path) or doc.path
         if doc.doc_type == doc_type:
             return doc
+    if doc_type == ContractDocumentType.CONTRACT:
+        generated = _try_generate_contract_document_if_missing(
+            session,
+            contract=contract,
+            user=user,
+        )
+        if generated is not None:
+            generated.path = documents_paths._public_contract_document_path(generated.path) or generated.path
+            return generated
+        if contract.template_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Pendiente de seleccionar plantilla.",
+            )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Plantilla asignada, documento pendiente de generar.",
+        )
     raise HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,
         detail="Documento no encontrado para el tipo solicitado.",
     )
-
-

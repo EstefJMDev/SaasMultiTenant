@@ -6,10 +6,18 @@ from typing import Any, Iterable, Optional, Sequence
 from sqlalchemy import delete, text
 from sqlmodel import Session, select
 
+from app.models.hr import Department, EmployeeDepartment, EmployeeProfile, Position
+from app.models.user import User
 from app.platform.contracts_core.comparativos_enums import (
     AccionHistorialContrato,
     EstadoAprobacionComparativo,
     EstadoContrato,
+)
+from app.platform.contracts_core.models import (
+    ComparativeStatus as LegacyComparativeStatus,
+    Contract as LegacyContract,
+    ContractEvent,
+    ContractStatus as LegacyContractStatus,
 )
 from app.platform.contracts_core.comparativos_models import (
     Comparativo,
@@ -24,6 +32,8 @@ from app.platform.contracts_core.comparativos_models import (
     ContratoDatosProveedor,
     ContratoHistorialFlujo,
     ContratoHito,
+    ContratoOfertaAdjudicada,
+    ContratoOfertaAdjudicadaPartida,
 )
 from app.platform.contracts_core.comparativos_schemas import (
     ComparativoCreate,
@@ -634,6 +644,273 @@ def obtener_contrato_por_id(
     return session.exec(stmt).one_or_none()
 
 
+def obtener_contrato_por_comparativo_id(
+    session: Session,
+    *,
+    tenant_id: int,
+    comparativo_id: int,
+) -> Optional[Contrato]:
+    stmt = (
+        select(Contrato)
+        .where(
+            Contrato.tenant_id == tenant_id,
+            Contrato.comparativo_id == comparativo_id,
+            Contrato.eliminado_en.is_(None),
+        )
+        .order_by(Contrato.id.asc())
+    )
+    return session.exec(stmt).first()
+
+
+def obtener_legacy_contract_por_comparativo_v2(
+    session: Session,
+    *,
+    tenant_id: int,
+    comparativo_id: int,
+) -> Optional[LegacyContract]:
+    stmt = text(
+        """
+        SELECT id
+        FROM public.contract
+        WHERE tenant_id = :tenant_id
+          AND deleted_at IS NULL
+          AND comparative_data->'_v2'->>'comparativo_id' = :comparativo_id
+        ORDER BY id ASC
+        LIMIT 1
+        """
+    )
+    row = session.exec(
+        stmt,
+        params={
+            "tenant_id": tenant_id,
+            "comparativo_id": str(comparativo_id),
+        },
+    ).first()
+    if row is None:
+        return None
+    legacy_contract_id = int(row[0] if isinstance(row, tuple) else row.id)
+    contract = session.get(LegacyContract, legacy_contract_id)
+    if contract is None or contract.tenant_id != tenant_id or contract.deleted_at is not None:
+        return None
+    return contract
+
+
+def activar_legacy_pending_template_desde_v2(
+    session: Session,
+    *,
+    tenant_id: int,
+    comparativo_id: int,
+    contrato_id: int,
+    usuario_id: Optional[int],
+) -> dict[str, Any]:
+    legacy_contract = obtener_legacy_contract_por_comparativo_v2(
+        session,
+        tenant_id=tenant_id,
+        comparativo_id=comparativo_id,
+    )
+    if legacy_contract is None:
+        return {
+            "legacy_contract_id": None,
+            "old_status": None,
+            "new_status": None,
+            "skipped_reason": "legacy_contract_not_found",
+        }
+
+    old_status = str(getattr(legacy_contract.status, "value", legacy_contract.status) or "")
+    new_status = old_status
+    skipped_reason: Optional[str] = None
+
+    comparative_data = dict(legacy_contract.comparative_data or {})
+    v2_data = dict(comparative_data.get("_v2") or {})
+    v2_data["comparativo_id"] = int(comparativo_id)
+    v2_data["contrato_id"] = int(contrato_id)
+    v2_data["estado"] = "APROBADO"
+    comparative_data["_v2"] = v2_data
+    legacy_contract.comparative_data = comparative_data
+
+    if legacy_contract.comparative_status != LegacyComparativeStatus.APPROVED.value:
+        legacy_contract.comparative_status = LegacyComparativeStatus.APPROVED.value
+
+    if old_status == LegacyContractStatus.DRAFT.value:
+        legacy_contract.status = LegacyContractStatus.PENDING_TEMPLATE
+        new_status = LegacyContractStatus.PENDING_TEMPLATE.value
+        session.add(
+            ContractEvent(
+                tenant_id=tenant_id,
+                contract_id=legacy_contract.id,
+                user_id=usuario_id,
+                event_type="contract.pending_template",
+                payload={
+                    "source": "comparativos_v2",
+                    "comparativo_id": int(comparativo_id),
+                    "contrato_id": int(contrato_id),
+                    "old_status": old_status,
+                    "new_status": new_status,
+                },
+            )
+        )
+    else:
+        skipped_reason = "status_already_progressed"
+
+    legacy_contract.updated_at = _utcnow()
+    session.add(legacy_contract)
+    session.flush()
+
+    return {
+        "legacy_contract_id": int(legacy_contract.id),
+        "old_status": old_status,
+        "new_status": new_status,
+        "skipped_reason": skipped_reason,
+    }
+
+
+def obtener_datos_proveedor_por_contrato(
+    session: Session,
+    *,
+    tenant_id: int,
+    contrato_id: int,
+) -> Optional[ContratoDatosProveedor]:
+    stmt = select(ContratoDatosProveedor).where(
+        ContratoDatosProveedor.tenant_id == tenant_id,
+        ContratoDatosProveedor.contrato_id == contrato_id,
+    )
+    return session.exec(stmt).one_or_none()
+
+
+def obtener_hitos_por_contrato(
+    session: Session,
+    *,
+    tenant_id: int,
+    contrato_id: int,
+) -> list[ContratoHito]:
+    stmt = (
+        select(ContratoHito)
+        .where(
+            ContratoHito.tenant_id == tenant_id,
+            ContratoHito.contrato_id == contrato_id,
+        )
+        .order_by(ContratoHito.orden.asc(), ContratoHito.id.asc())
+    )
+    return list(session.exec(stmt).all())
+
+
+def obtener_oferta_adjudicada_por_contrato(
+    session: Session,
+    *,
+    tenant_id: int,
+    contrato_id: int,
+) -> Optional[ContratoOfertaAdjudicada]:
+    stmt = select(ContratoOfertaAdjudicada).where(
+        ContratoOfertaAdjudicada.tenant_id == tenant_id,
+        ContratoOfertaAdjudicada.contrato_id == contrato_id,
+    )
+    return session.exec(stmt).one_or_none()
+
+
+def obtener_partidas_adjudicadas_por_contrato(
+    session: Session,
+    *,
+    tenant_id: int,
+    contrato_id: int,
+) -> list[ContratoOfertaAdjudicadaPartida]:
+    stmt = (
+        select(ContratoOfertaAdjudicadaPartida)
+        .where(
+            ContratoOfertaAdjudicadaPartida.tenant_id == tenant_id,
+            ContratoOfertaAdjudicadaPartida.contrato_id == contrato_id,
+        )
+        .order_by(
+            ContratoOfertaAdjudicadaPartida.orden.asc(),
+            ContratoOfertaAdjudicadaPartida.id.asc(),
+        )
+    )
+    return list(session.exec(stmt).all())
+
+
+def obtener_contexto_usuario_aprobador(
+    session: Session,
+    *,
+    tenant_id: int,
+    usuario_id: int,
+) -> dict[str, Any]:
+    """Retorna datos minimos para resolver una aprobacion sin ambiguedad."""
+    user = session.get(User, usuario_id)
+    if user is None:
+        return {
+            "usuario_encontrado": False,
+            "is_super_admin": False,
+            "can_approve_comparative": False,
+            "position_role_code": None,
+            "departamentos": [],
+        }
+    if not user.is_super_admin and int(user.tenant_id or 0) != int(tenant_id):
+        return {
+            "usuario_encontrado": True,
+            "is_super_admin": False,
+            "can_approve_comparative": False,
+            "position_role_code": None,
+            "departamentos": [],
+        }
+
+    employee = session.exec(
+        select(EmployeeProfile).where(
+            EmployeeProfile.user_id == usuario_id,
+            EmployeeProfile.tenant_id == tenant_id,
+            EmployeeProfile.is_active.is_(True),
+        )
+    ).one_or_none()
+
+    position: Optional[Position] = None
+    can_approve = bool(user.is_super_admin)
+    if employee and employee.position_id:
+        position = session.get(Position, employee.position_id)
+        if (
+            position is not None
+            and position.is_active
+            and position.tenant_id == tenant_id
+            and position.can_approve_comparative
+        ):
+            can_approve = True
+
+    dept_ids: set[int] = set()
+    if position and position.department_id:
+        dept_ids.add(int(position.department_id))
+    if employee:
+        rows = session.exec(
+            select(EmployeeDepartment.department_id).where(
+                EmployeeDepartment.employee_id == employee.id
+            )
+        ).all()
+        for row in rows:
+            if row is None:
+                continue
+            value = row[0] if isinstance(row, tuple) else row
+            if value:
+                dept_ids.add(int(value))
+
+    departamentos: list[str] = []
+    if dept_ids:
+        rows = session.exec(
+            select(Department.name).where(
+                Department.tenant_id == tenant_id,
+                Department.id.in_(tuple(dept_ids)),
+                Department.is_active.is_(True),
+            )
+        ).all()
+        for row in rows:
+            name = row[0] if isinstance(row, tuple) else row
+            if name:
+                departamentos.append(str(name))
+
+    return {
+        "usuario_encontrado": True,
+        "is_super_admin": bool(user.is_super_admin),
+        "can_approve_comparative": bool(can_approve),
+        "position_role_code": (position.role_code if position else None),
+        "departamentos": departamentos,
+    }
+
+
 def crear_contrato_desde_comparativo(
     session: Session,
     *,
@@ -712,6 +989,90 @@ def copiar_hitos_comparativo_a_contrato(
             nombre_hito=h.nombre_hito,
             descripcion_hito=h.descripcion_hito,
             orden=h.orden if h.orden is not None else idx,
+        )
+        session.add(item)
+        nuevos.append(item)
+    session.flush()
+    return nuevos
+
+
+def crear_oferta_adjudicada_snapshot_contrato(
+    session: Session,
+    *,
+    tenant_id: int,
+    contrato_id: int,
+    comparativo: Comparativo,
+    oferta_origen: ComparativoOfertaAdjudicada,
+    proveedor_data: Optional[dict[str, Any]] = None,
+) -> ContratoOfertaAdjudicada:
+    item = ContratoOfertaAdjudicada(
+        tenant_id=tenant_id,
+        contrato_id=contrato_id,
+        comparativo_oferta_adjudicada_id=oferta_origen.id,
+        proveedor_id=oferta_origen.proveedor_id or comparativo.proveedor_id,
+        proveedor_nombre_snapshot=(
+            oferta_origen.empresa
+            or (proveedor_data or {}).get("razon_social")
+            or (proveedor_data or {}).get("empresa")
+        ),
+        numero_oferta=oferta_origen.numero_oferta,
+        total_ofertado=oferta_origen.total_ofertado,
+        total_ofertas_homogeneas=oferta_origen.total_ofertas_homogeneas,
+        precio_neto=oferta_origen.precio_neto,
+        forma_pago=comparativo.forma_pago,
+        plazo=oferta_origen.plazos or comparativo.duracion,
+        observaciones=oferta_origen.observaciones_oferta,
+        condiciones_json={
+            "porcentaje_oferta_homogenea": (
+                str(oferta_origen.porcentaje_oferta_homogenea)
+                if oferta_origen.porcentaje_oferta_homogenea is not None
+                else None
+            ),
+            "garantias": oferta_origen.garantias,
+            "retenciones": oferta_origen.retenciones,
+            "resumen_hitos": oferta_origen.resumen_hitos,
+            "proveedor_observaciones": oferta_origen.proveedor_observaciones,
+            "materiales_productos": oferta_origen.materiales_productos,
+            "especificaciones_compra": oferta_origen.especificaciones_compra,
+            "especificaciones_tecnicas": oferta_origen.especificaciones_tecnicas,
+            "especificaciones_ejecucion": oferta_origen.especificaciones_ejecucion,
+            "plazos_entrega_sistemas_periodos_suministro": (
+                oferta_origen.plazos_entrega_sistemas_periodos_suministro
+            ),
+            "documentacion_tecnica_proveedor": oferta_origen.documentacion_tecnica_proveedor,
+            "telefono": oferta_origen.telefono,
+            "email": oferta_origen.email,
+            "persona_contacto": oferta_origen.persona_contacto,
+        },
+    )
+    session.add(item)
+    session.flush()
+    return item
+
+
+def crear_partidas_adjudicadas_snapshot_contrato(
+    session: Session,
+    *,
+    tenant_id: int,
+    contrato_id: int,
+    contrato_oferta_adjudicada_id: int,
+    partidas_origen: Sequence[ComparativoOfertaAdjudicadaPartida],
+) -> list[ContratoOfertaAdjudicadaPartida]:
+    nuevos: list[ContratoOfertaAdjudicadaPartida] = []
+    for idx, partida in enumerate(partidas_origen):
+        item = ContratoOfertaAdjudicadaPartida(
+            tenant_id=tenant_id,
+            contrato_id=contrato_id,
+            contrato_oferta_adjudicada_id=contrato_oferta_adjudicada_id,
+            comparativo_partida_adjudicada_id=partida.id,
+            codigo=partida.codigo_capitulo,
+            descripcion=partida.descripcion,
+            unidad=partida.unidad,
+            cantidad=partida.medicion,
+            precio_unitario=partida.precio,
+            importe=partida.importe,
+            orden=partida.orden if partida.orden is not None else idx,
+            metadata_json=None,
         )
         session.add(item)
         nuevos.append(item)

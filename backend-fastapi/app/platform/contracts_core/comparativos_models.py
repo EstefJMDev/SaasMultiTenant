@@ -520,6 +520,82 @@ class ContratoHito(SQLModel, table=True):
     )
 
 
+class ContratoOfertaAdjudicada(SQLModel, table=True):
+    __tablename__ = "contrato_oferta_adjudicada"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    tenant_id: int = Field(foreign_key="tenant.id", index=True)
+    contrato_id: int = Field(foreign_key="contratos.id", index=True, unique=True)
+    comparativo_oferta_adjudicada_id: Optional[int] = Field(
+        default=None,
+        foreign_key="comparativo_oferta_adjudicada.id",
+        index=True,
+    )
+    proveedor_id: Optional[int] = Field(sa_column=_proveedor_id_column_nullable())
+
+    proveedor_nombre_snapshot: Optional[str] = Field(default=None, max_length=255)
+    numero_oferta: Optional[str] = Field(default=None, max_length=64)
+    total_ofertado: Optional[Decimal] = Field(
+        default=None, sa_column=Column(Numeric(14, 2))
+    )
+    total_ofertas_homogeneas: Optional[Decimal] = Field(
+        default=None, sa_column=Column(Numeric(14, 2))
+    )
+    precio_neto: Optional[Decimal] = Field(
+        default=None, sa_column=Column(Numeric(14, 2))
+    )
+    forma_pago: Optional[str] = Field(default=None, max_length=64)
+    plazo: Optional[str] = Field(default=None, sa_column=Column(Text))
+    observaciones: Optional[str] = Field(default=None, sa_column=Column(Text))
+    condiciones_json: Optional[dict] = Field(default=None, sa_column=Column(JSONB))
+
+    fecha_creacion: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    fecha_actualizacion: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )
+
+
+class ContratoOfertaAdjudicadaPartida(SQLModel, table=True):
+    __tablename__ = "contrato_oferta_adjudicada_partidas"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    tenant_id: int = Field(foreign_key="tenant.id", index=True)
+    contrato_id: int = Field(foreign_key="contratos.id", index=True)
+    contrato_oferta_adjudicada_id: int = Field(
+        foreign_key="contrato_oferta_adjudicada.id",
+        index=True,
+    )
+    comparativo_partida_adjudicada_id: Optional[int] = Field(
+        default=None,
+        foreign_key="comparativo_oferta_adjudicada_partidas.id",
+        index=True,
+    )
+
+    codigo: Optional[str] = Field(default=None, max_length=64)
+    descripcion: Optional[str] = Field(default=None, sa_column=Column(Text))
+    unidad: Optional[str] = Field(default=None, max_length=32)
+    cantidad: Optional[Decimal] = Field(
+        default=None, sa_column=Column(Numeric(14, 4))
+    )
+    precio_unitario: Optional[Decimal] = Field(
+        default=None, sa_column=Column(Numeric(14, 4))
+    )
+    importe: Optional[Decimal] = Field(
+        default=None, sa_column=Column(Numeric(14, 2))
+    )
+    orden: int = Field(default=0)
+    metadata_json: Optional[dict] = Field(default=None, sa_column=Column(JSONB))
+
+    fecha_creacion: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    fecha_actualizacion: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )
+
+    __table_args__ = (
+        Index("ix_contrato_oferta_adjudicada_partidas_contrato_orden", "contrato_id", "orden"),
+    )
+
+
 class ContratoHistorialFlujo(SQLModel, table=True):
     __tablename__ = "contrato_historial_flujo"
 
@@ -554,5 +630,7 @@ __all__ = [
     "Contrato",
     "ContratoDatosProveedor",
     "ContratoHito",
+    "ContratoOfertaAdjudicada",
+    "ContratoOfertaAdjudicadaPartida",
     "ContratoHistorialFlujo",
 ]

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -78,7 +79,7 @@ def _get_jo_subordinado_user_ids(session: Session, *, current_user: User, tenant
 
 logger = logging.getLogger("app.platform.contracts_core")
 
-_ADMIN_REVIEW_DEPARTMENT_NAMES = {"administracion", "administración", "admin"}
+_ADMIN_REVIEW_DEPARTMENT_NAMES = {"administracion", "admin"}
 _PRE_ADMIN_CONTRACT_STATUSES = {
     ContractStatus.PENDING_SUPPLIER,
     ContractStatus.PENDING_TEMPLATE,
@@ -105,6 +106,11 @@ def _clean_text(value: object) -> Optional[str]:
     if not isinstance(value, str):
         return None
     return contract_validators.normalize_human_text(value)
+
+
+def _normalize_department_name(value: object) -> str:
+    normalized = unicodedata.normalize("NFKD", str(value or ""))
+    return "".join(ch for ch in normalized if not unicodedata.combining(ch)).strip().lower()
 
 
 def _first_non_empty(*values: object) -> Optional[str]:
@@ -636,7 +642,7 @@ def _user_in_named_departments(
         return False
     rows = session.exec(select(Department).where(Department.id.in_(department_ids))).all()
     return any(
-        ((department.name or "").strip().lower() in accepted_names)
+        (_normalize_department_name(department.name) in accepted_names)
         for department in rows
         if department is not None
     )
@@ -688,12 +694,12 @@ def _list_admin_assignment_candidates(
         )
     ).all()
 
-    target_names = {"administracion", "administración", "admin"}
+    target_names = {"administracion", "admin"}
     candidates: dict[int, str] = {}
     for user, _employee, department in rows:
         if department is None:
             continue
-        dept_name = (department.name or "").strip().lower()
+        dept_name = _normalize_department_name(department.name)
         if dept_name not in target_names:
             continue
         if not (

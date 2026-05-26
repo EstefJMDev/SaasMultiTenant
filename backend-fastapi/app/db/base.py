@@ -86,7 +86,8 @@ from app.platform.contracts_core.comparativos_models import (  # noqa: F401
     Contrato,
     ContratoDatosProveedor,
     ContratoHito,
+    ContratoOfertaAdjudicada,
+    ContratoOfertaAdjudicadaPartida,
     ContratoHistorialFlujo,
 )
-
 

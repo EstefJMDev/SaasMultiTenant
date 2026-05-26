@@ -146,6 +146,7 @@ import {
   adminApproveDraft,
   contractKeys,
   type Contract,
+  type ContractDocument,
   type ContractTemplate,
   type ContractType,
   type ContractUpdatePayload,
@@ -661,6 +662,24 @@ export const ContractsModule: React.FC<ContractsModuleProps> = ({
   // Evitamos consultar /signatures/config desde este modulo para no forzar 403.
   const signatureConfigQuery = { data: null as { allow_autofirma?: boolean } | null };
 
+  const refreshContractDocumentState = (contractId: number, tenantId?: number) => {
+    const resolvedTenantId = tenantId ?? effectiveTenantId;
+    void queryClient.invalidateQueries({
+      queryKey: contractKeys.detail(resolvedTenantId, contractId),
+    });
+    void queryClient.invalidateQueries({
+      queryKey: contractKeys.documents(resolvedTenantId, contractId),
+    });
+    void queryClient.refetchQueries({
+      queryKey: contractKeys.detail(resolvedTenantId, contractId),
+      type: "active",
+    });
+    void queryClient.refetchQueries({
+      queryKey: contractKeys.documents(resolvedTenantId, contractId),
+      type: "active",
+    });
+  };
+
   const createContractMutation = useMutation({
     mutationFn: (payload: {
       type: ContractType;
@@ -1094,6 +1113,10 @@ export const ContractsModule: React.FC<ContractsModuleProps> = ({
       void queryClient.invalidateQueries({
         queryKey: contractsBaseKey,
       });
+      refreshContractDocumentState(
+        contract.id,
+        contract.tenant_id ?? effectiveTenantId,
+      );
       if (!silent) {
         toast({ status: "success", title: "Contrato regenerado" });
       }
@@ -1176,6 +1199,10 @@ export const ContractsModule: React.FC<ContractsModuleProps> = ({
     onSuccess: ({ contract }) => {
       setCurrentContract(contract);
       void queryClient.invalidateQueries({ queryKey: contractsBaseKey });
+      refreshContractDocumentState(
+        contract.id,
+        contract.tenant_id ?? effectiveTenantId,
+      );
       toast({ status: "success", title: "Plantilla seleccionada" });
     },
     onError: (error) => {
@@ -1190,6 +1217,10 @@ export const ContractsModule: React.FC<ContractsModuleProps> = ({
     onSuccess: (contract) => {
       setCurrentContract(contract);
       void queryClient.invalidateQueries({ queryKey: contractsBaseKey });
+      refreshContractDocumentState(
+        contract.id,
+        contract.tenant_id ?? effectiveTenantId,
+      );
       if ((contract as any).supplier_request_token) {
         toast({ status: "info", title: "Datos incompletos — Email enviado al proveedor", description: "El proveedor recibirá un enlace para completar sus datos." });
       } else {
@@ -8877,6 +8908,73 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
   const [isViewFieldsOpen, setIsViewFieldsOpen] = useState(false);
   const [isViewWorkflowOpen, setIsViewWorkflowOpen] = useState(true);
   const [pdfRefreshToken, setPdfRefreshToken] = useState(0);
+  const documentPollingAttemptsRef = useRef(0);
+  useEffect(() => {
+    documentPollingAttemptsRef.current = 0;
+  }, [contract?.id, contract?.template_id, contract?.updated_at]);
+  const contractDocsQuery = useQuery<ContractDocument[]>({
+    queryKey: contractKeys.documents(tenantId, contract?.id ?? 0),
+    queryFn: () =>
+      fetchContractDocuments(contract!.id, contract?.tenant_id ?? tenantId),
+    enabled: Boolean(contract?.id),
+    refetchInterval: (query) => {
+      if (!contract?.id) return false;
+      const docs = (query.state.data as ContractDocument[] | undefined) ?? [];
+      const hasContractDocument = docs.some((doc) => doc.doc_type === "CONTRACT");
+      const awaitingContractDocument =
+        Boolean(contract?.template_id) &&
+        !hasContractDocument &&
+        (
+          isPreparingDocs ||
+          isRegeneratingContract ||
+          ["PENDING_TEMPLATE", "PENDING_DATA_VALIDATION"].includes(
+            contract?.status ?? "",
+          )
+        );
+      if (!awaitingContractDocument) {
+        documentPollingAttemptsRef.current = 0;
+        return false;
+      }
+      if (documentPollingAttemptsRef.current >= 8) {
+        return false;
+      }
+      documentPollingAttemptsRef.current += 1;
+      return 2000;
+    },
+    refetchIntervalInBackground: false,
+  });
+  const contractDocument = useMemo(
+    () =>
+      (contractDocsQuery.data ?? []).find((doc) => doc.doc_type === "CONTRACT") ??
+      null,
+    [contractDocsQuery.data],
+  );
+  const viewerDocumentVersion = useMemo(
+    () =>
+      [
+        contract?.template_id ?? "no-template",
+        contract?.updated_at ?? "",
+        contractDocument?.id ?? "",
+        contractDocument?.created_at ?? "",
+      ].join(":"),
+    [
+      contract?.template_id,
+      contract?.updated_at,
+      contractDocument?.created_at,
+      contractDocument?.id,
+    ],
+  );
+  const isViewerDocumentPending =
+    Boolean(contract?.template_id) &&
+    !contractDocument &&
+    (
+      contractDocsQuery.isFetching ||
+      isPreparingDocs ||
+      isRegeneratingContract ||
+      ["PENDING_TEMPLATE", "PENDING_DATA_VALIDATION"].includes(
+        contract?.status ?? "",
+      )
+    );
   const isAssignedAdminDraft =
     (contract?.status ?? "DRAFT") === "PENDING_DATA_VALIDATION" &&
     !!currentUserForCaps?.id &&
@@ -9961,6 +10059,9 @@ const ContratoForm: React.FC<ContratoFormProps> = ({
             <ContractPdfViewer
               contractId={contract?.id}
               tenantId={tenantId}
+              templateId={contract?.template_id ?? null}
+              documentVersion={viewerDocumentVersion}
+              isDocumentPending={isViewerDocumentPending}
               canRegenerate={!isReadOnlyView && userCanRegenerateContract}
               onRegenerate={onRegenerateContract}
               isRegenerating={isRegeneratingContract}

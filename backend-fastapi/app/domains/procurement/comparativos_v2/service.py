@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import logging
+import unicodedata
 from typing import Any, Optional, Sequence
 
 from fastapi import status
@@ -50,6 +52,13 @@ _ESTADOS_RETORNABLES = {
     EstadoComparativo.PENDIENTE_APROBACION.value,
     EstadoComparativo.RECHAZADO.value,
 }
+_TIPOS_CONTRATO_REQUIEREN_PARTIDAS = {
+    "SUMINISTRO",
+    "SUBCONTRATACION",
+}
+
+
+logger = logging.getLogger("app.procurement.comparativos_v2.service")
 
 
 def _utcnow() -> datetime:
@@ -107,6 +116,32 @@ class ComparativosV2Service:
                 "No se pudo persistir el comparativo por un error interno.",
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             ) from exc
+
+    def _activar_legacy_pending_template_desde_v2(
+        self,
+        *,
+        comparativo: Comparativo,
+        contrato_id: int,
+        usuario_id: Optional[int],
+    ) -> None:
+        resultado = repo.activar_legacy_pending_template_desde_v2(
+            self.session,
+            tenant_id=comparativo.tenant_id,
+            comparativo_id=int(comparativo.id),
+            contrato_id=int(contrato_id),
+            usuario_id=usuario_id,
+        )
+        logger.info(
+            "comparativos_v2 op=activate_legacy_pending_template_from_v2 "
+            "legacy_contract_id=%s comparativo_id=%s contrato_id=%s old_status=%s "
+            "new_status=%s skipped_reason=%s",
+            resultado.get("legacy_contract_id"),
+            comparativo.id,
+            contrato_id,
+            resultado.get("old_status"),
+            resultado.get("new_status"),
+            resultado.get("skipped_reason"),
+        )
 
     def _validar_proveedor_existe(self, proveedor_id: int) -> dict[str, Any]:
         proveedor = repo.obtener_proveedor_por_id(
@@ -748,9 +783,78 @@ class ComparativosV2Service:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             ) from exc
 
+    def _normalize_text_token(self, value: Optional[str]) -> str:
+        raw = (value or "").strip().lower()
+        if not raw:
+            return ""
+        normalized = unicodedata.normalize("NFKD", raw)
+        return "".join(ch for ch in normalized if not unicodedata.combining(ch))
+
+    def _normalize_aprobacion_role(self, rol_aprobador: Optional[str]) -> Optional[str]:
+        token = self._normalize_text_token(rol_aprobador)
+        if token in {"obra", "director tecnico", "director_tecnico"} or "obra" in token:
+            return "OBRA"
+        if token in {"gerencia", "gerente", "direccion", "direccion general", "management"}:
+            return "GERENCIA"
+        if "gerenc" in token or token.startswith("direcc"):
+            return "GERENCIA"
+        return None
+
+    def _roles_permitidos_para_usuario(
+        self,
+        *,
+        tenant_id: int,
+        usuario_id: int,
+    ) -> set[str]:
+        contexto = repo.obtener_contexto_usuario_aprobador(
+            self.session,
+            tenant_id=tenant_id,
+            usuario_id=usuario_id,
+        )
+        if not contexto.get("usuario_encontrado"):
+            raise DomainError(
+                "Usuario aprobador no encontrado.",
+                status_code=status.HTTP_404_NOT_FOUND,
+            )
+        if not contexto.get("can_approve_comparative"):
+            return set()
+
+        if contexto.get("is_super_admin"):
+            return {"OBRA", "GERENCIA"}
+
+        roles: set[str] = set()
+        position_role_code = str(contexto.get("position_role_code") or "").strip().upper()
+        if position_role_code in {"JO", "DT"}:
+            roles.add("OBRA")
+
+        for dept_name in contexto.get("departamentos") or []:
+            token = self._normalize_text_token(str(dept_name))
+            if token in {"obra", "director tecnico", "director_tecnico"} or "obra" in token:
+                roles.add("OBRA")
+            if token in {"gerencia", "gerente", "direccion", "direccion general", "management"}:
+                roles.add("GERENCIA")
+            elif "gerenc" in token or token.startswith("direcc"):
+                roles.add("GERENCIA")
+        return roles
+
+    def _usuario_puede_resolver_aprobacion(
+        self,
+        *,
+        aprobacion: ComparativoAprobacion,
+        usuario_id: int,
+        roles_usuario: set[str],
+    ) -> bool:
+        if aprobacion.usuario_aprobador_id is not None:
+            return int(aprobacion.usuario_aprobador_id) == int(usuario_id)
+        role = self._normalize_aprobacion_role(aprobacion.rol_aprobador)
+        if role is None:
+            return False
+        return role in roles_usuario
+
     def _seleccionar_aprobacion_pendiente(
         self,
         *,
+        tenant_id: int,
         aprobaciones: Sequence[ComparativoAprobacion],
         usuario_id: Optional[int],
         aprobacion_id: Optional[int],
@@ -766,20 +870,87 @@ class ComparativosV2Service:
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
 
-        if aprobacion_id is not None:
-            for item in pendientes:
-                if item.id == aprobacion_id:
-                    return item
+        min_orden = min(item.orden_aprobacion for item in pendientes)
+        pendientes_actuales = [
+            item for item in pendientes if item.orden_aprobacion == min_orden
+        ]
+
+        if usuario_id is None:
             raise DomainError(
-                "La aprobacion indicada no esta pendiente o no pertenece al comparativo.",
+                "usuario_id es obligatorio para resolver una aprobacion.",
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
+        roles_usuario = self._roles_permitidos_para_usuario(
+            tenant_id=tenant_id,
+            usuario_id=usuario_id,
+        )
 
-        if usuario_id is not None:
-            for item in pendientes:
-                if item.usuario_aprobador_id == usuario_id:
-                    return item
-        return pendientes[0]
+        if aprobacion_id is not None:
+            target = next((item for item in pendientes if item.id == aprobacion_id), None)
+            if target is None:
+                raise DomainError(
+                    "La aprobacion indicada no esta pendiente o no pertenece al comparativo.",
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                )
+            if target.orden_aprobacion != min_orden:
+                raise DomainError(
+                    "La aprobacion indicada no corresponde al orden activo del flujo.",
+                    status_code=status.HTTP_409_CONFLICT,
+                )
+            if not self._usuario_puede_resolver_aprobacion(
+                aprobacion=target,
+                usuario_id=usuario_id,
+                roles_usuario=roles_usuario,
+            ):
+                raise DomainError(
+                    "La aprobacion indicada no corresponde al usuario actual.",
+                    status_code=status.HTTP_403_FORBIDDEN,
+                )
+            return target
+
+        pendientes_asignadas = [
+            item
+            for item in pendientes_actuales
+            if item.usuario_aprobador_id is not None
+            and int(item.usuario_aprobador_id) == int(usuario_id)
+        ]
+        if len(pendientes_asignadas) == 1:
+            return pendientes_asignadas[0]
+        if len(pendientes_asignadas) > 1:
+            raise DomainError(
+                "Hay mas de una aprobacion pendiente asignada al usuario en el orden actual.",
+                status_code=status.HTTP_409_CONFLICT,
+            )
+
+        pendientes_por_rol = [
+            item
+            for item in pendientes_actuales
+            if item.usuario_aprobador_id is None
+            and self._usuario_puede_resolver_aprobacion(
+                aprobacion=item,
+                usuario_id=usuario_id,
+                roles_usuario=roles_usuario,
+            )
+        ]
+        if len(pendientes_por_rol) == 1:
+            return pendientes_por_rol[0]
+        if len(pendientes_por_rol) > 1:
+            raise DomainError(
+                "No se pudo resolver de forma segura la aprobacion pendiente; indique aprobacion_id.",
+                status_code=status.HTTP_409_CONFLICT,
+            )
+
+        if not roles_usuario and any(
+            item.usuario_aprobador_id is None for item in pendientes_actuales
+        ):
+            raise DomainError(
+                "No se pudo determinar el rol/departamento aprobador del usuario actual.",
+                status_code=status.HTTP_403_FORBIDDEN,
+            )
+        raise DomainError(
+            "No hay una aprobacion pendiente que corresponda al usuario actual.",
+            status_code=status.HTTP_403_FORBIDDEN,
+        )
 
     def _recalcular_aprobacion_actual(
         self,
@@ -837,6 +1008,7 @@ class ComparativosV2Service:
                 )
 
             aprobacion = self._seleccionar_aprobacion_pendiente(
+                tenant_id=tenant_id,
                 aprobaciones=aprobaciones,
                 usuario_id=usuario_id,
                 aprobacion_id=aprobacion_id,
@@ -931,6 +1103,7 @@ class ComparativosV2Service:
             )
             if aprobaciones:
                 aprobacion = self._seleccionar_aprobacion_pendiente(
+                    tenant_id=tenant_id,
                     aprobaciones=aprobaciones,
                     usuario_id=usuario_id,
                     aprobacion_id=aprobacion_id,
@@ -1078,6 +1251,10 @@ class ComparativosV2Service:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             ) from exc
 
+    def _tipo_contrato_requiere_partidas(self, tipo_contrato: Optional[str]) -> bool:
+        token = self._normalize_text_token(tipo_contrato).replace(" ", "_").upper()
+        return token in _TIPOS_CONTRATO_REQUIEREN_PARTIDAS
+
     def _generar_contrato_desde_comparativo_impl(
         self,
         *,
@@ -1094,14 +1271,83 @@ class ComparativosV2Service:
         """
         from app.platform.contracts_core.comparativos_enums import AccionHistorialContrato
 
-        if comparativo.contrato_id is not None:
-            return int(comparativo.contrato_id)
-
         if comparativo.estado != EstadoComparativo.APROBADO.value:
             raise DomainError(
                 "Solo se puede generar contrato desde un comparativo APROBADO.",
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
+
+        linked_contract = None
+        if comparativo.contrato_id is not None:
+            linked_contract = repo.obtener_contrato_por_id(
+                self.session,
+                tenant_id=comparativo.tenant_id,
+                contrato_id=int(comparativo.contrato_id),
+            )
+            if (
+                linked_contract is not None
+                and linked_contract.comparativo_id not in (None, comparativo.id)
+            ):
+                logger.warning(
+                    "comparativos_v2 op=generar_contrato comparativo_id=%s contrato_id=%s "
+                    "link_mismatch_contrato_comparativo=%s",
+                    comparativo.id,
+                    linked_contract.id,
+                    linked_contract.comparativo_id,
+                )
+                linked_contract = None
+            if linked_contract is not None:
+                if linked_contract.comparativo_id is None:
+                    linked_contract.comparativo_id = comparativo.id
+                    linked_contract.fecha_actualizacion = _utcnow()
+                    self.session.add(linked_contract)
+                    self.session.flush()
+                logger.info(
+                    "comparativos_v2 op=generar_contrato comparativo_id=%s contrato_id=%s reused=link",
+                    comparativo.id,
+                    linked_contract.id,
+                )
+                self._activar_legacy_pending_template_desde_v2(
+                    comparativo=comparativo,
+                    contrato_id=int(linked_contract.id),
+                    usuario_id=usuario_id,
+                )
+                return int(linked_contract.id)
+
+        existing_contract = repo.obtener_contrato_por_comparativo_id(
+            self.session,
+            tenant_id=comparativo.tenant_id,
+            comparativo_id=comparativo.id,
+        )
+        if existing_contract is not None:
+            if comparativo.contrato_id != existing_contract.id:
+                comparativo.contrato_id = existing_contract.id
+                comparativo.fecha_actualizacion = _utcnow()
+                self.session.add(comparativo)
+                self.session.flush()
+                repo.registrar_evento_historial(
+                    self.session,
+                    tenant_id=comparativo.tenant_id,
+                    comparativo_id=comparativo.id,
+                    estado_anterior=comparativo.estado,
+                    estado_nuevo=comparativo.estado,
+                    accion=AccionHistorialComparativo.GENERACION_CONTRATO.value,
+                    usuario_id=usuario_id,
+                    comentario="Contrato v2 existente reutilizado y re-enlazado al comparativo.",
+                    metadatos_json={"contrato_id": int(existing_contract.id), "reutilizado": True},
+                )
+            logger.info(
+                "comparativos_v2 op=generar_contrato comparativo_id=%s contrato_id=%s reused=comparativo_id",
+                comparativo.id,
+                existing_contract.id,
+            )
+            self._activar_legacy_pending_template_desde_v2(
+                comparativo=comparativo,
+                contrato_id=int(existing_contract.id),
+                usuario_id=usuario_id,
+            )
+            return int(existing_contract.id)
+
         if comparativo.proveedor_id is None:
             raise DomainError(
                 "El comparativo no tiene proveedor_id; no se puede generar contrato.",
@@ -1116,6 +1362,30 @@ class ComparativosV2Service:
             raise DomainError(
                 "Proveedor referenciado por el comparativo no existe en `proveedores`.",
                 status_code=status.HTTP_404_NOT_FOUND,
+            )
+
+        oferta_adjudicada = repo.obtener_oferta_adjudicada_por_comparativo(
+            self.session,
+            tenant_id=comparativo.tenant_id,
+            comparativo_id=comparativo.id,
+        )
+        if oferta_adjudicada is None:
+            raise DomainError(
+                "No se puede generar contrato sin oferta adjudicada en comparativo v2.",
+                status_code=status.HTTP_400_BAD_REQUEST,
+            )
+        partidas_adjudicadas = repo.obtener_partidas_oferta_adjudicada(
+            self.session,
+            tenant_id=comparativo.tenant_id,
+            comparativo_oferta_adjudicada_id=oferta_adjudicada.id,
+        )
+        if (
+            self._tipo_contrato_requiere_partidas(comparativo.tipo_contrato)
+            and not partidas_adjudicadas
+        ):
+            raise DomainError(
+                "El tipo de contrato requiere partidas adjudicadas y no se encontraron.",
+                status_code=status.HTTP_400_BAD_REQUEST,
             )
 
         contrato = repo.crear_contrato_desde_comparativo(
@@ -1145,6 +1415,22 @@ class ComparativosV2Service:
                 hitos_origen=hitos_origen,
             )
 
+        oferta_snapshot = repo.crear_oferta_adjudicada_snapshot_contrato(
+            self.session,
+            tenant_id=comparativo.tenant_id,
+            contrato_id=contrato.id,
+            comparativo=comparativo,
+            oferta_origen=oferta_adjudicada,
+            proveedor_data=proveedor,
+        )
+        partidas_snapshot = repo.crear_partidas_adjudicadas_snapshot_contrato(
+            self.session,
+            tenant_id=comparativo.tenant_id,
+            contrato_id=contrato.id,
+            contrato_oferta_adjudicada_id=oferta_snapshot.id,
+            partidas_origen=partidas_adjudicadas,
+        )
+
         repo.registrar_evento_historial_contrato(
             self.session,
             tenant_id=comparativo.tenant_id,
@@ -1154,7 +1440,22 @@ class ComparativosV2Service:
             estado_anterior=None,
             estado_nuevo=contrato.estado,
             comentario="Contrato generado automaticamente desde comparativo aprobado.",
-            metadatos_json={"comparativo_id": int(comparativo.id)},
+            metadatos_json={
+                "comparativo_id": int(comparativo.id),
+                "oferta_adjudicada_id": int(oferta_adjudicada.id),
+                "contrato_oferta_adjudicada_id": int(oferta_snapshot.id),
+                "partidas_adjudicadas_count": len(partidas_snapshot),
+            },
+        )
+
+        logger.info(
+            "comparativos_v2 op=generar_contrato comparativo_id=%s contrato_id=%s "
+            "oferta_adjudicada_id=%s contrato_oferta_adjudicada_id=%s partidas=%s",
+            comparativo.id,
+            contrato.id,
+            oferta_adjudicada.id,
+            oferta_snapshot.id,
+            len(partidas_snapshot),
         )
 
         # Enlace en el comparativo y evento de auditoria
@@ -1172,7 +1473,18 @@ class ComparativosV2Service:
             accion=AccionHistorialComparativo.GENERACION_CONTRATO.value,
             usuario_id=usuario_id,
             comentario=None,
-            metadatos_json={"contrato_id": int(contrato.id)},
+            metadatos_json={
+                "contrato_id": int(contrato.id),
+                "oferta_adjudicada_id": int(oferta_adjudicada.id),
+                "contrato_oferta_adjudicada_id": int(oferta_snapshot.id),
+                "partidas_adjudicadas_count": len(partidas_snapshot),
+            },
+        )
+
+        self._activar_legacy_pending_template_desde_v2(
+            comparativo=comparativo,
+            contrato_id=int(contrato.id),
+            usuario_id=usuario_id,
         )
 
         return int(contrato.id)
