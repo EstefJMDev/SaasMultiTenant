@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import unicodedata
 from typing import Optional, Set
 
 from fastapi import HTTPException
@@ -28,6 +29,11 @@ ROLE_GERENCIA_ALIASES = {"gerencia", "gerente", "manager", "management", "tenant
 ROLE_ADMIN_ALIASES = {"administracion", "admin", "administration"}
 ROLE_COMPRAS_ALIASES = {"compras", "purchase", "purchasing"}
 ROLE_JURIDICO_ALIASES = {"juridico", "legal"}
+
+
+def _normalize_department_token(value: Optional[str]) -> str:
+    normalized = unicodedata.normalize("NFKD", value or "")
+    return "".join(ch for ch in normalized if not unicodedata.combining(ch)).strip().lower()
 
 
 def ensure_tenant_access(user: User, tenant_id: int) -> None:
@@ -119,6 +125,10 @@ def _has_comparative_cap(session: Session, user: User, cap: str) -> bool:
     if not pos or not pos.is_active or pos.tenant_id != user.tenant_id:
         return False
     return bool(getattr(pos, cap, False))
+
+
+def has_full_approver_permission(session: Session, user: User) -> bool:
+    return _has_comparative_cap(session, user, "full_approver")
 
 
 def can_create_comparative(session: Session, user: User) -> bool:
@@ -272,17 +282,15 @@ def can_view_all_contracts(session: Session, user: User) -> bool:
     ).all()
     global_names = {
         "administracion",
-        "administración",
         "admin",
         "juridico",
-        "jurídico",
         "legal",
         "gerencia",
     }
     for dept in rows:
         if not dept or not bool(getattr(dept, "can_view_contract", False)):
             continue
-        if (dept.name or "").strip().lower() in global_names:
+        if _normalize_department_token(dept.name) in global_names:
             return True
     return False
 
@@ -316,7 +324,7 @@ def get_user_departments(session: Session, user: User) -> Set[ContractDepartment
     out: Set[ContractDepartment] = set()
     for row in rows:
         name = (row if isinstance(row, str) else row[0]) or ""
-        key = name.strip().lower()
+        key = _normalize_department_token(name)
         mapped = name_map.get(key)
         if isinstance(mapped, ContractDepartment):
             out.add(mapped)

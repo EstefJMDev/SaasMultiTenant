@@ -47,6 +47,7 @@ export interface Contract {
   assigned_admin_user_id?: number | null;
   assigned_admin_user_name?: string | null;
   supplier_name?: string | null;
+  supplier_display_name?: string | null;
   supplier_tax_id?: string | null;
   supplier_email?: string | null;
   supplier_phone?: string | null;
@@ -386,6 +387,16 @@ export async function fetchContracts(
   );
 }
 
+export async function fetchComparativesV2(
+  tenantId?: number,
+): Promise<Contract[]> {
+  const response = await apiClient.get<Contract[]>(
+    "/api/v1/comparativos",
+    withTenant(tenantId),
+  );
+  return response.data;
+}
+
 export async function fetchContractById(
   contractId: number,
   tenantId?: number,
@@ -397,9 +408,16 @@ export async function fetchContractById(
     );
     return response.data;
   } catch (error) {
+    const status = (error as { response?: { status?: number } })?.response?.status;
+    if (status === 404) {
+      try {
+        return await fetchComparativeV2ById(contractId, tenantId);
+      } catch {
+        // sigue abajo con la lógica legacy de soft-delete
+      }
+    }
     // Si el backend responde 404 es porque el contrato fue soft-eliminado.
     // Lo marcamos para que no vuelva a aparecer en el listado.
-    const status = (error as { response?: { status?: number } })?.response?.status;
     if (status === 404) {
       console.log(
         "[fetchContractById] 404 para contractId=",
@@ -410,6 +428,17 @@ export async function fetchContractById(
     }
     throw error;
   }
+}
+
+export async function fetchComparativeV2ById(
+  comparativeId: number,
+  tenantId?: number,
+): Promise<Contract> {
+  const response = await apiClient.get<Contract>(
+    `/api/v1/comparativos/${comparativeId}`,
+    withTenant(tenantId),
+  );
+  return response.data;
 }
 
 export async function fetchComparativeOffers(
@@ -427,20 +456,35 @@ export async function fetchComparativeOffers(
     if (status === 404) {
       addDeletedContractId(contractId);
     }
-    throw error;
+    return fetchComparativeOffersV2(contractId, tenantId);
   }
+}
+
+export async function fetchComparativeOffersV2(
+  comparativeId: number,
+  tenantId?: number,
+): Promise<Array<Record<string, unknown>>> {
+  const response = await apiClient.get<Array<Record<string, unknown>>>(
+    `/api/v1/comparativos/${comparativeId}/comparative-offers`,
+    withTenant(tenantId),
+  );
+  return response.data;
 }
 
 export async function syncComparativeOffers(
   contractId: number,
   tenantId?: number,
 ): Promise<Array<Record<string, unknown>>> {
-  const response = await apiClient.post<Array<Record<string, unknown>>>(
-    `/api/v1/contracts/${contractId}/sync-comparative-offers`,
-    {},
-    withTenant(tenantId),
-  );
-  return response.data;
+  try {
+    const response = await apiClient.post<Array<Record<string, unknown>>>(
+      `/api/v1/contracts/${contractId}/sync-comparative-offers`,
+      {},
+      withTenant(tenantId),
+    );
+    return response.data;
+  } catch (error) {
+    return syncComparativeOffersV2(contractId, tenantId);
+  }
 }
 
 export async function fetchContractDocuments(
@@ -498,6 +542,49 @@ export async function importComparativeExcel(
   return response.data;
 }
 
+export async function importComparativeExcelV2(
+  file: File,
+  payload: {
+    type: ContractType;
+    title?: string | null;
+    obra_numero?: string | null;
+    obra_nombre?: string | null;
+    jefe_obra?: string | null;
+  },
+  tenantId?: number,
+): Promise<Contract> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("type", payload.type);
+  if (payload.title) formData.append("title", payload.title);
+  if (payload.obra_numero) formData.append("obra_numero", payload.obra_numero);
+  if (payload.obra_nombre) formData.append("obra_nombre", payload.obra_nombre);
+  if (payload.jefe_obra) formData.append("jefe_obra", payload.jefe_obra);
+  const response = await apiClient.post<Contract>(
+    "/api/v1/comparativos/import-excel",
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+        ...(buildTenantHeaders(tenantId)?.headers ?? {}),
+      },
+    },
+  );
+  return response.data;
+}
+
+export async function syncComparativeOffersV2(
+  comparativeId: number,
+  tenantId?: number,
+): Promise<Array<Record<string, unknown>>> {
+  const response = await apiClient.post<Array<Record<string, unknown>>>(
+    `/api/v1/comparativos/${comparativeId}/sync-comparative-offers`,
+    {},
+    withTenant(tenantId),
+  );
+  return response.data;
+}
+
 export async function updateContract(
   contractId: number,
   payload: ContractUpdatePayload,
@@ -528,6 +615,39 @@ export async function saveComparativeDraft(
   return response.data;
 }
 
+export async function createComparativeV2(
+  payload: {
+    type?: ContractType;
+    title?: string | null;
+    comparative_data?: Record<string, unknown> | null;
+  },
+  tenantId?: number,
+): Promise<Contract> {
+  const response = await apiClient.post<Contract>(
+    "/api/v1/comparativos",
+    payload,
+    withTenant(tenantId),
+  );
+  return response.data;
+}
+
+export async function saveComparativeDraftV2(
+  comparativeId: number,
+  payload: {
+    type?: ContractType;
+    title?: string | null;
+    comparative_data?: Record<string, unknown> | null;
+  },
+  tenantId?: number,
+): Promise<Contract> {
+  const response = await apiClient.patch<Contract>(
+    `/api/v1/comparativos/${comparativeId}`,
+    payload,
+    withTenant(tenantId),
+  );
+  return response.data;
+}
+
 export async function deleteContract(
   contractId: number,
   tenantId?: number,
@@ -539,6 +659,17 @@ export async function deleteContract(
   // Registramos localmente la eliminación porque el backend hace soft-delete
   // y el listado puede seguir devolviendo el contrato.
   addDeletedContractId(contractId);
+}
+
+export async function deleteComparativeV2(
+  comparativeId: number,
+  tenantId?: number,
+): Promise<void> {
+  await apiClient.delete(
+    `/api/v1/comparativos/${comparativeId}`,
+    withTenant(tenantId),
+  );
+  addDeletedContractId(comparativeId);
 }
 
 export async function addContractOffer(
@@ -790,8 +921,32 @@ export async function replaceComparativeSource(
 ): Promise<Contract> {
   const formData = new FormData();
   formData.append("file", file);
+  try {
+    const response = await apiClient.post<Contract>(
+      `/api/v1/contracts/${contractId}/comparative-source/replace`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          ...(buildTenantHeaders(tenantId)?.headers ?? {}),
+        },
+      },
+    );
+    return response.data;
+  } catch (error) {
+    return replaceComparativeSourceV2(contractId, file, tenantId);
+  }
+}
+
+export async function replaceComparativeSourceV2(
+  comparativeId: number,
+  file: File,
+  tenantId?: number,
+): Promise<Contract> {
+  const formData = new FormData();
+  formData.append("file", file);
   const response = await apiClient.post<Contract>(
-    `/api/v1/contracts/${contractId}/comparative-source/replace`,
+    `/api/v1/comparativos/${comparativeId}/comparative-source/replace`,
     formData,
     {
       headers: {
@@ -807,8 +962,36 @@ export async function fetchComparativeSourceBlob(
   contractId: number,
   tenantId?: number,
 ): Promise<{ blob: Blob; filename?: string }> {
+  try {
+    const response = await apiClient.get<Blob>(
+      `/api/v1/contracts/${contractId}/comparative-source/download`,
+      {
+        responseType: "blob",
+        ...(withTenant(tenantId) ?? {}),
+      },
+    );
+    const contentType =
+      (response.headers["content-type"] as string | undefined) ??
+      "application/octet-stream";
+    const blob =
+      response.data instanceof Blob
+        ? response.data
+        : new Blob([response.data], { type: contentType });
+    const filename = parseFilenameFromContentDisposition(
+      response.headers["content-disposition"] as string | undefined,
+    );
+    return { blob, filename };
+  } catch (error) {
+    return fetchComparativeSourceBlobV2(contractId, tenantId);
+  }
+}
+
+export async function fetchComparativeSourceBlobV2(
+  comparativeId: number,
+  tenantId?: number,
+): Promise<{ blob: Blob; filename?: string }> {
   const response = await apiClient.get<Blob>(
-    `/api/v1/contracts/${contractId}/comparative-source/download`,
+    `/api/v1/comparativos/${comparativeId}/comparative-source/download`,
     {
       responseType: "blob",
       ...(withTenant(tenantId) ?? {}),
@@ -899,7 +1082,14 @@ export async function submitContractGerencia(
 export interface ReaValidationResult {
   rea: {
     encontrada: boolean | null;
-    estado: "ALTA" | "NO_CONSTA" | "ERROR_VALIDACION" | "DESCONOCIDO" | "ERROR_RED";
+    estado:
+      | "ALTA"
+      | "NO_CONSTA"
+      | "ERROR_VALIDACION"
+      | "DESCONOCIDO"
+      | "ERROR_RED"
+      | "SKIPPED_NOT_SUBCONTRATACION"
+      | "SKIPPED_FAST_TRACK";
     tipo_identificacion?: string;
     numero?: string;
     error?: string;
@@ -920,12 +1110,36 @@ export async function validateRea(
   return response.data;
 }
 
+export async function validateReaV2(
+  comparativeId: number,
+  tenantId?: number,
+): Promise<ReaValidationResult> {
+  const response = await apiClient.post<ReaValidationResult>(
+    `/api/v1/comparativos/${comparativeId}/validate-rea`,
+    {},
+    withTenant(tenantId),
+  );
+  return response.data;
+}
+
 export async function submitComparative(
   contractId: number,
   tenantId?: number,
 ): Promise<Contract> {
   const response = await apiClient.post<Contract>(
     `/api/v1/contracts/${contractId}/submit-comparative`,
+    {},
+    withTenant(tenantId),
+  );
+  return response.data;
+}
+
+export async function submitComparativeV2(
+  comparativeId: number,
+  tenantId?: number,
+): Promise<Contract> {
+  const response = await apiClient.post<Contract>(
+    `/api/v1/comparativos/${comparativeId}/enviar`,
     {},
     withTenant(tenantId),
   );
@@ -948,12 +1162,16 @@ export async function rebuildComparative(
   contractId: number,
   tenantId?: number,
 ): Promise<Contract> {
-  const response = await apiClient.post<Contract>(
-    `/api/v1/contracts/${contractId}/rebuild-comparative`,
-    {},
-    withTenant(tenantId),
-  );
-  return response.data;
+  try {
+    const response = await apiClient.post<Contract>(
+      `/api/v1/contracts/${contractId}/rebuild-comparative`,
+      {},
+      withTenant(tenantId),
+    );
+    return response.data;
+  } catch (error) {
+    return rebuildComparativeV2(contractId, tenantId);
+  }
 }
 
 export async function approveComparative(
@@ -969,6 +1187,26 @@ export async function approveComparative(
   return response.data;
 }
 
+export async function approveComparativeV2(
+  comparativeId: number,
+  payload: ContractApprovalPayload,
+  tenantId?: number,
+): Promise<Contract> {
+  const response = await apiClient.post<Contract>(
+    `/api/v1/comparativos/${comparativeId}/aprobar`,
+    { comentario: payload.comment ?? null },
+    withTenant(tenantId),
+  );
+  return response.data;
+}
+
+export async function rebuildComparativeV2(
+  comparativeId: number,
+  tenantId?: number,
+): Promise<Contract> {
+  return fetchComparativeV2ById(comparativeId, tenantId);
+}
+
 export async function rejectComparative(
   contractId: number,
   payload: { reason: string },
@@ -977,6 +1215,19 @@ export async function rejectComparative(
   const response = await apiClient.post<Contract>(
     `/api/v1/contracts/${contractId}/reject-comparative`,
     payload,
+    withTenant(tenantId),
+  );
+  return response.data;
+}
+
+export async function rejectComparativeV2(
+  comparativeId: number,
+  payload: { reason: string },
+  tenantId?: number,
+): Promise<Contract> {
+  const response = await apiClient.post<Contract>(
+    `/api/v1/comparativos/${comparativeId}/rechazar`,
+    { motivo: payload.reason, comentario: payload.reason },
     withTenant(tenantId),
   );
   return response.data;
@@ -1058,8 +1309,23 @@ export async function fetchContractComparativeApprovals(
   contractId: number,
   tenantId?: number,
 ): Promise<ContractComparativeApproval[]> {
+  try {
+    const response = await apiClient.get<ContractComparativeApproval[]>(
+      `/api/v1/contracts/${contractId}/comparative-approvals`,
+      withTenant(tenantId),
+    );
+    return response.data;
+  } catch (error) {
+    return fetchComparativeApprovalsV2(contractId, tenantId);
+  }
+}
+
+export async function fetchComparativeApprovalsV2(
+  comparativeId: number,
+  tenantId?: number,
+): Promise<ContractComparativeApproval[]> {
   const response = await apiClient.get<ContractComparativeApproval[]>(
-    `/api/v1/contracts/${contractId}/comparative-approvals`,
+    `/api/v1/comparativos/${comparativeId}/comparative-approvals`,
     withTenant(tenantId),
   );
   return response.data;
@@ -1075,6 +1341,19 @@ export async function returnComparative(
   const response = await apiClient.post<Contract>(
     `/api/v1/contracts/${contractId}/return-comparative`,
     { comment },
+    withTenant(tenantId),
+  );
+  return response.data;
+}
+
+export async function returnComparativeV2(
+  comparativeId: number,
+  comment: string,
+  tenantId?: number,
+): Promise<Contract> {
+  const response = await apiClient.post<Contract>(
+    `/api/v1/comparativos/${comparativeId}/devolver`,
+    { comentario: comment },
     withTenant(tenantId),
   );
   return response.data;

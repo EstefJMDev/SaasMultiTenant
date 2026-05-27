@@ -220,7 +220,7 @@ def download_contract_document_by_type_endpoint(
         else:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Archivo de documento no encontrado en almacenamiento.",
+                detail="Documento generado, archivo no localizado.",
             )
     return FileResponse(
         path=str(path_obj),
@@ -401,4 +401,3 @@ def get_contract_comparative_approvals_endpoint(
         user=current_user,
     )
     return [ContractComparativeApprovalRead.model_validate(item) for item in approvals]
-

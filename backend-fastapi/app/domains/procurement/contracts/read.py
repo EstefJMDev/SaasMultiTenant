@@ -3,10 +3,11 @@ from __future__ import annotations
 from collections import defaultdict
 import logging
 import math
+import re
 from typing import Any, Sequence
 
 from pydantic import ValidationError
-from sqlalchemy import inspect as sa_inspect
+from sqlalchemy import bindparam, inspect as sa_inspect, text
 from sqlmodel import Session, select
 
 from app.platform.contracts_core.models import (
@@ -25,6 +26,64 @@ from app.models.user import User
 from app.domains.procurement.workflow import approvals as workflow_approvals
 
 logger = logging.getLogger("app.platform.contracts_core")
+
+
+def _normalize_tax_id(value: object) -> str:
+    raw = str(value or "").strip().upper()
+    return re.sub(r"[^A-Z0-9]", "", raw)
+
+
+def _provider_display_name_from_values(*values: object) -> str | None:
+    for value in values:
+        text_value = str(value or "").strip()
+        if text_value:
+            return text_value
+    return None
+
+
+def _load_provider_display_names(
+    session: Session,
+    contracts: Sequence[Contract],
+) -> dict[str, str]:
+    normalized_tax_ids = sorted(
+        {
+            _normalize_tax_id(getattr(contract, "supplier_tax_id", None))
+            for contract in contracts
+            if _normalize_tax_id(getattr(contract, "supplier_tax_id", None))
+        }
+    )
+    if not normalized_tax_ids:
+        return {}
+
+    stmt = text(
+        """
+        SELECT
+            regexp_replace(UPPER(COALESCE(cif, '')), '[^A-Z0-9]', '', 'g') AS lookup_id,
+            empresa,
+            razon_social
+        FROM proveedores
+        WHERE regexp_replace(UPPER(COALESCE(cif, '')), '[^A-Z0-9]', '', 'g') IN :lookup_ids
+        """
+    ).bindparams(bindparam("lookup_ids", expanding=True))
+
+    result: dict[str, str] = {}
+    try:
+        with session.begin_nested():
+            rows = session.exec(stmt, params={"lookup_ids": normalized_tax_ids}).all()
+    except Exception:
+        logger.warning("Provider display name lookup fallback for contracts list")
+        return {}
+
+    for row in rows:
+        mapping = row._mapping
+        lookup_id = _normalize_tax_id(mapping.get("lookup_id"))
+        display_name = _provider_display_name_from_values(
+            mapping.get("empresa"),
+            mapping.get("razon_social"),
+        )
+        if lookup_id and display_name:
+            result[lookup_id] = display_name
+    return result
 
 
 def _resolve_v2_comparativo_id_for_guard(contract: Contract) -> int | None:
@@ -290,6 +349,11 @@ def build_contract_read(
             getattr(contract, "id", None),
         )
     payload = _safe_contract_read(contract).model_dump()
+    provider_display_names = _load_provider_display_names(session, [contract])
+    payload["supplier_display_name"] = _provider_display_name_from_values(
+        provider_display_names.get(_normalize_tax_id(payload.get("supplier_tax_id"))),
+        payload.get("supplier_name"),
+    )
     payload["comparative_data"] = _sanitize_json_value(payload.get("comparative_data"))
     payload["contract_data"] = _sanitize_json_value(payload.get("contract_data"))
     payload["ocr_data"] = _sanitize_json_value(payload.get("ocr_data"))
@@ -356,6 +420,7 @@ def build_contract_reads(
             }
         except Exception:
             logger.warning("Assigned admin lookup fallback for contracts list")
+    provider_display_names = _load_provider_display_names(session, contracts)
 
     grouped: dict[int, list[ContractWorkflowApproval]] = defaultdict(list)
     for row in pending_rows:
@@ -384,6 +449,10 @@ def build_contract_reads(
                 pending_step_order = first.step_order
 
         payload = _safe_contract_read(contract).model_dump()
+        payload["supplier_display_name"] = _provider_display_name_from_values(
+            provider_display_names.get(_normalize_tax_id(payload.get("supplier_tax_id"))),
+            payload.get("supplier_name"),
+        )
         payload["comparative_data"] = _sanitize_json_value(payload.get("comparative_data"))
         payload["contract_data"] = _sanitize_json_value(payload.get("contract_data"))
         payload["ocr_data"] = _sanitize_json_value(payload.get("ocr_data"))

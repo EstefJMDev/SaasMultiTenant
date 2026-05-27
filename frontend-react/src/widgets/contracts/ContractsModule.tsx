@@ -146,6 +146,7 @@ import {
   adminApproveDraft,
   contractKeys,
   type Contract,
+  type ContractDocument,
   type ContractTemplate,
   type ContractType,
   type ContractUpdatePayload,
@@ -154,6 +155,19 @@ import {
   type ReviewApproval,
 } from "@entities/contracts";
 import type { ReaValidationResult } from "@api/contracts";
+import {
+  approveComparativeV2,
+  createComparativeV2,
+  deleteComparativeV2,
+  fetchComparativeV2ById,
+  fetchComparativesV2,
+  importComparativeExcelV2,
+  rejectComparativeV2,
+  returnComparativeV2,
+  saveComparativeDraftV2,
+  submitComparativeV2,
+  validateReaV2,
+} from "@api/contracts";
 import { useHrDepartments, type Department } from "@entities/hr";
 
 // ============================================================================
@@ -596,10 +610,17 @@ export const ContractsModule: React.FC<ContractsModuleProps> = ({
   const [deletedContractIds, setDeletedContractIds] = useState<Set<number>>(
     () => new Set(),
   );
+  const useComparativesV2 = scope === "comparatives";
+  const fetchScopeContracts = (tenantId?: number) =>
+    useComparativesV2 ? fetchComparativesV2(tenantId) : fetchContracts(tenantId);
+  const fetchScopeContractById = (contractId: number, tenantId?: number) =>
+    useComparativesV2
+      ? fetchComparativeV2ById(contractId, tenantId)
+      : fetchContractById(contractId, tenantId);
 
   const contractsQuery = useQuery<Contract[]>({
     queryKey: contractKeys.list(effectiveTenantId),
-    queryFn: () => fetchContracts(effectiveTenantId),
+    queryFn: () => fetchScopeContracts(effectiveTenantId),
     enabled: !isSuperAdmin || Boolean(effectiveTenantId),
     retry: false,
     // Descarta contratos soft-eliminados localmente.
@@ -636,7 +657,7 @@ export const ContractsModule: React.FC<ContractsModuleProps> = ({
     // Esperar a que la lista termine de cargar antes de fallback a fetch puntual.
     if (contractsQuery.isLoading) return;
     let cancelled = false;
-    fetchContractById(forcedContractId, effectiveTenantId)
+    fetchScopeContractById(forcedContractId, effectiveTenantId)
       .then((contract) => {
         if (cancelled) return;
         if (contract) setCurrentContract(contract);
@@ -661,18 +682,46 @@ export const ContractsModule: React.FC<ContractsModuleProps> = ({
   // Evitamos consultar /signatures/config desde este modulo para no forzar 403.
   const signatureConfigQuery = { data: null as { allow_autofirma?: boolean } | null };
 
+  const refreshContractDocumentState = (contractId: number, tenantId?: number) => {
+    const resolvedTenantId = tenantId ?? effectiveTenantId;
+    void queryClient.invalidateQueries({
+      queryKey: contractKeys.detail(resolvedTenantId, contractId),
+    });
+    void queryClient.invalidateQueries({
+      queryKey: contractKeys.documents(resolvedTenantId, contractId),
+    });
+    void queryClient.refetchQueries({
+      queryKey: contractKeys.detail(resolvedTenantId, contractId),
+      type: "active",
+    });
+    void queryClient.refetchQueries({
+      queryKey: contractKeys.documents(resolvedTenantId, contractId),
+      type: "active",
+    });
+  };
+
   const createContractMutation = useMutation({
     mutationFn: (payload: {
       type: ContractType;
       comparative_data?: Record<string, unknown>;
+      title?: string | null;
     }) =>
-      createContract(
-        {
-          type: payload.type,
-          comparative_data: payload.comparative_data ?? null,
-        },
-        effectiveTenantId,
-      ),
+      useComparativesV2
+        ? createComparativeV2(
+            {
+              type: payload.type,
+              title: payload.title ?? null,
+              comparative_data: payload.comparative_data ?? null,
+            },
+            effectiveTenantId,
+          )
+        : createContract(
+            {
+              type: payload.type,
+              comparative_data: payload.comparative_data ?? null,
+            },
+            effectiveTenantId,
+          ),
     onSuccess: (contract) => {
       setCurrentContract(contract);
       void queryClient.invalidateQueries({
@@ -694,7 +743,7 @@ export const ContractsModule: React.FC<ContractsModuleProps> = ({
       obra_nombre?: string | null;
       jefe_obra?: string | null;
     }) =>
-      importComparativeExcel(
+      (useComparativesV2 ? importComparativeExcelV2 : importComparativeExcel)(
         payload.file,
         {
           type: payload.type,
@@ -811,9 +860,15 @@ export const ContractsModule: React.FC<ContractsModuleProps> = ({
       contractId: number;
       payload: {
         type?: ContractType;
+        title?: string | null;
         comparative_data?: Record<string, unknown> | null;
       };
-    }) => saveComparativeDraft(contractId, payload, effectiveTenantId),
+    }) =>
+      (useComparativesV2 ? saveComparativeDraftV2 : saveComparativeDraft)(
+        contractId,
+        payload,
+        effectiveTenantId,
+      ),
     onSuccess: (contract) => {
       setCurrentContract(contract);
       void queryClient.invalidateQueries({
@@ -829,7 +884,9 @@ export const ContractsModule: React.FC<ContractsModuleProps> = ({
   const deleteContractMutation = useMutation({
     mutationFn: (contractId: number) => {
       console.log("[DELETE] Enviando DELETE para contractId=", contractId, "tenantId=", effectiveTenantId);
-      return deleteContract(contractId, effectiveTenantId);
+      return useComparativesV2
+        ? deleteComparativeV2(contractId, effectiveTenantId)
+        : deleteContract(contractId, effectiveTenantId);
     },
     onSuccess: async (data, contractId) => {
       console.log("[DELETE] Backend respondió OK para contractId=", contractId, "data=", data);
@@ -908,7 +965,7 @@ export const ContractsModule: React.FC<ContractsModuleProps> = ({
       contractId: number;
       comment?: string;
     }) =>
-      approveComparative(
+      (useComparativesV2 ? approveComparativeV2 : approveComparative)(
         contractId,
         { comment: comment || null },
         effectiveTenantId,
@@ -948,7 +1005,11 @@ export const ContractsModule: React.FC<ContractsModuleProps> = ({
 
   const returnComparativeMutation = useMutation({
     mutationFn: ({ contractId, comment }: { contractId: number; comment: string }) =>
-      returnComparative(contractId, comment, effectiveTenantId),
+      (useComparativesV2 ? returnComparativeV2 : returnComparative)(
+        contractId,
+        comment,
+        effectiveTenantId,
+      ),
     onSuccess: (contract) => {
       setCurrentContract(contract);
       setApprovalErrorDetail(null);
@@ -966,7 +1027,11 @@ export const ContractsModule: React.FC<ContractsModuleProps> = ({
 
   const rejectComparativeMutation = useMutation({
     mutationFn: ({ contractId, reason }: { contractId: number; reason: string }) =>
-      rejectComparative(contractId, { reason }, effectiveTenantId),
+      (useComparativesV2 ? rejectComparativeV2 : rejectComparative)(
+        contractId,
+        { reason },
+        effectiveTenantId,
+      ),
     onSuccess: (contract) => {
       setCurrentContract(contract);
       setApprovalErrorDetail(null);
@@ -1016,7 +1081,10 @@ export const ContractsModule: React.FC<ContractsModuleProps> = ({
 
   const validateReaMutation = useMutation({
     mutationFn: (contractId: number) =>
-      validateRea(contractId, effectiveTenantId),
+      (useComparativesV2 ? validateReaV2 : validateRea)(
+        contractId,
+        effectiveTenantId,
+      ),
   });
 
   const sendSupplierFormMutation = useMutation({
@@ -1044,7 +1112,10 @@ export const ContractsModule: React.FC<ContractsModuleProps> = ({
 
   const submitComparativeMutation = useMutation({
     mutationFn: (contractId: number) =>
-      submitComparative(contractId, effectiveTenantId),
+      (useComparativesV2 ? submitComparativeV2 : submitComparative)(
+        contractId,
+        effectiveTenantId,
+      ),
     onSuccess: (contract) => {
       setCurrentContract(contract);
       setApprovalErrorDetail(null);
@@ -1094,6 +1165,10 @@ export const ContractsModule: React.FC<ContractsModuleProps> = ({
       void queryClient.invalidateQueries({
         queryKey: contractsBaseKey,
       });
+      refreshContractDocumentState(
+        contract.id,
+        contract.tenant_id ?? effectiveTenantId,
+      );
       if (!silent) {
         toast({ status: "success", title: "Contrato regenerado" });
       }
@@ -1176,6 +1251,10 @@ export const ContractsModule: React.FC<ContractsModuleProps> = ({
     onSuccess: ({ contract }) => {
       setCurrentContract(contract);
       void queryClient.invalidateQueries({ queryKey: contractsBaseKey });
+      refreshContractDocumentState(
+        contract.id,
+        contract.tenant_id ?? effectiveTenantId,
+      );
       toast({ status: "success", title: "Plantilla seleccionada" });
     },
     onError: (error) => {
@@ -1190,6 +1269,10 @@ export const ContractsModule: React.FC<ContractsModuleProps> = ({
     onSuccess: (contract) => {
       setCurrentContract(contract);
       void queryClient.invalidateQueries({ queryKey: contractsBaseKey });
+      refreshContractDocumentState(
+        contract.id,
+        contract.tenant_id ?? effectiveTenantId,
+      );
       if ((contract as any).supplier_request_token) {
         toast({ status: "info", title: "Datos incompletos — Email enviado al proveedor", description: "El proveedor recibirá un enlace para completar sus datos." });
       } else {
@@ -1635,7 +1718,7 @@ export const ContractsModule: React.FC<ContractsModuleProps> = ({
                     obra_nombre: sharedObraNombre.trim() || null,
                     jefe_obra: sharedJefeObra.trim() || null,
                   });
-                const refreshed = await fetchContracts(effectiveTenantId);
+                const refreshed = await fetchScopeContracts(effectiveTenantId);
                 const updated =
                   refreshed.find((item: Contract) => item.id === contract.id) ??
                   contract;
@@ -1644,6 +1727,11 @@ export const ContractsModule: React.FC<ContractsModuleProps> = ({
                 setCurrentView("comparativo-review");
               }}
               onCreateContract={async (payload, files) => {
+                if (useComparativesV2 && files.length > 0) {
+                  throw new Error(
+                    "La subida OCR de ofertas todavia no esta soportada en el flujo unificado de comparativos. Usa Excel o comparativo manual.",
+                  );
+                }
                 const manualObraNumero = sharedObraNumero.trim();
                 const manualObraNombre = sharedObraNombre.trim();
                 const manualJefeObra = sharedJefeObra.trim();
@@ -1680,7 +1768,7 @@ export const ContractsModule: React.FC<ContractsModuleProps> = ({
                     ),
                   );
                 }
-                const refreshed = await fetchContracts(effectiveTenantId);
+                const refreshed = await fetchScopeContracts(effectiveTenantId);
                 const updated =
                   refreshed.find((item: Contract) => item.id === contract.id) ??
                   contract;
@@ -2115,7 +2203,9 @@ export const ContractsModule: React.FC<ContractsModuleProps> = ({
               currentRoleName={roleName}
               currentUserId={currentUser?.id ?? null}
               canApproveComparativeByPosition={
-                !isJefeObraPosition && Boolean(currentUser?.can_approve_comparative)
+                !isJefeObraPosition &&
+                (Boolean(currentUser?.can_approve_comparative) ||
+                  Boolean((currentUser as any)?.full_approver))
               }
               canRejectComparativeByPosition={Boolean(currentUser?.can_reject_comparative)}
               canCreateComparativeByPosition={Boolean(currentUser?.can_create_comparative)}
@@ -2329,14 +2419,14 @@ const Dashboard: React.FC<DashboardProps> = ({
         if (!obra.includes(obraQ)) return false;
       }
       if (tituloQ) {
-        const titulo = (c.title || c.supplier_name || "").toLowerCase();
+        const titulo = (c.title || getSupplierDisplayName(c) || "").toLowerCase();
         if (!titulo.includes(tituloQ)) return false;
       }
       if (filterEstado && estadoGroupOf(c.status) !== filterEstado) {
         return false;
       }
       if (proveedorQ) {
-        const proveedor = (c.supplier_name ?? "").toLowerCase();
+        const proveedor = getSupplierDisplayName(c).toLowerCase();
         if (!proveedor.includes(proveedorQ)) return false;
       }
       if (filterFecha) {
@@ -2621,7 +2711,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                   <Td>{getComparativeObraNumero(contract)}</Td>
                   <Td>{formatContractType(contract.type)}</Td>
                   <Td><ContractStatusChip status={contract.status} /></Td>
-                  <Td>{contract.supplier_name ?? "Pendiente"}</Td>
+                  <Td>{getSupplierDisplayName(contract)}</Td>
                   <Td>{contract.assigned_admin_user_name ?? "Sin asignar"}</Td>
                   <Td>{formatDate(contract.created_at)}</Td>
                   <Td>{formatDate(contract.updated_at)}</Td>
@@ -2827,7 +2917,7 @@ const DocumentsCenter: React.FC<DocumentsCenterProps> = ({
       await Promise.all(
         contracts.map(async (contract) => {
           try {
-            await fetchContractById(contract.id, contract.tenant_id ?? tenantId);
+            await fetchScopeContractById(contract.id, contract.tenant_id ?? tenantId);
           } catch (error) {
             const status = (error as { response?: { status?: number } })
               ?.response?.status;
@@ -2885,14 +2975,14 @@ const DocumentsCenter: React.FC<DocumentsCenterProps> = ({
         if (!obra.includes(obraQ)) return false;
       }
       if (tituloQ) {
-        const titulo = (c.title || c.supplier_name || "").toLowerCase();
+        const titulo = (c.title || getSupplierDisplayName(c) || "").toLowerCase();
         if (!titulo.includes(tituloQ)) return false;
       }
       if (filterEstado && estadoGroupOf(c.comparative_status) !== filterEstado) {
         return false;
       }
       if (proveedorQ) {
-        const proveedor = (c.supplier_name ?? "").toLowerCase();
+        const proveedor = getSupplierDisplayName(c).toLowerCase();
         if (!proveedor.includes(proveedorQ)) return false;
       }
       if (filterFecha) {
@@ -3236,13 +3326,13 @@ const DocumentsCenter: React.FC<DocumentsCenterProps> = ({
                       >
                         <Td fontWeight="semibold">CP-{contract.id}</Td>
                         <Td>{getComparativeObraNumero(contract)}</Td>
-                        <Td>{contract.title || contract.supplier_name || "Sin título"}</Td>
+                        <Td>{contract.title || getSupplierDisplayName(contract) || "Sin título"}</Td>
                         <Td>
                           <ComparativeStatusChip
                             status={contract.comparative_status}
                           />
                         </Td>
-                        <Td>{contract.supplier_name ?? "Pendiente"}</Td>
+                        <Td>{getSupplierDisplayName(contract)}</Td>
                         <Td>{formatDate(contract.created_at)}</Td>
                         <Td>{formatDate(contract.updated_at)}</Td>
                         <Td onClick={(event: React.MouseEvent) => event.stopPropagation()}>
@@ -3340,7 +3430,7 @@ const DocumentsCenter: React.FC<DocumentsCenterProps> = ({
           >
             {contracts.map((contract) => (
               <option key={contract.id} value={contract.id}>
-                {`CT-${contract.id} | ${formatContractType(contract.type)} | ${contract.supplier_name ?? "Sin proveedor"}`}
+                {`CT-${contract.id} | ${formatContractType(contract.type)} | ${getSupplierDisplayName(contract)}`}
               </option>
             ))}
           </Select>
@@ -5793,6 +5883,9 @@ const ReaResultPanel: React.FC<{
 }> = ({ result, supplierTaxId }) => {
   const isOk = result.next_action === "send_to_approval";
   const reaAlta = result.rea.estado === "ALTA";
+  const reaSkipped =
+    result.rea.estado === "SKIPPED_NOT_SUBCONTRATACION" ||
+    result.rea.estado === "SKIPPED_FAST_TRACK";
   return (
     <Stack spacing={3} w="full">
       <Flex
@@ -5825,7 +5918,9 @@ const ReaResultPanel: React.FC<{
           </Text>
           <Text fontSize="sm" color={isOk ? "green.700" : "yellow.700"}>
             {isOk
-              ? "Proveedor acreditado en REA y validado en el sistema."
+              ? reaSkipped
+                ? "Este tipo de comparativo no requiere validación REA. Se enviará a aprobación."
+                : "Proveedor acreditado en REA y validado en el sistema."
               : reaAlta
               ? "El proveedor está en REA pero no existe en el sistema. Se enviará formulario."
               : "El proveedor no figura como acreditado en REA. Se enviará formulario para completar datos."}
@@ -6956,8 +7051,9 @@ const ComparativoReview: React.FC<ComparativoReviewProps> = ({
         return;
       }
       setReaResult(res);
-      if (res.rea.estado === "ALTA") {
-        // REA OK → enviamos directamente a aprobación (con o sin proveedor en BD).
+      if (res.rea.estado === "ALTA" || res.next_action === "send_to_approval") {
+        // Si REA está en ALTA, el comparativo puede seguir su flujo aunque luego
+        // haga falta completar onboarding del proveedor en una fase posterior.
         await handleSubmitComparative();
         closeSubmitModal();
       } else {
@@ -7112,7 +7208,7 @@ const ComparativoReview: React.FC<ComparativoReviewProps> = ({
                   >
                     {contracts.map((item) => (
                       <option key={item.id} value={item.id}>
-                        {`CT-${item.id} · ${item.title || item.supplier_name || "Sin título"}`}
+                        {`CT-${item.id} · ${item.title || getSupplierDisplayName(item) || "Sin título"}`}
                       </option>
                     ))}
                   </Select>
@@ -7131,7 +7227,7 @@ const ComparativoReview: React.FC<ComparativoReviewProps> = ({
                       {contracts.map((item) => (
                         <Tr key={item.id}>
                           <Td>{`CT-${item.id}`}</Td>
-                          <Td>{item.title || item.supplier_name || "Sin título"}</Td>
+                          <Td>{item.title || getSupplierDisplayName(item) || "Sin título"}</Td>
                           <Td>
                             <ComparativeStatusChip status={item.comparative_status} />
                           </Td>
@@ -12235,7 +12331,7 @@ const ApprovalPanel: React.FC<ApprovalPanelProps> = ({
                   </Text>
                   <Text>
                     <strong>Proveedor:</strong>{" "}
-                    {contract.supplier_name ?? "Pendiente"}
+                    {getSupplierDisplayName(contract)}
                   </Text>
                   <Text>
                     <strong>Importe:</strong>{" "}
@@ -14286,6 +14382,12 @@ const getComparativeObraNumero = (contract: Contract): string => {
   }
   if (contract.project_id) return String(contract.project_id);
   return "—";
+};
+
+const getSupplierDisplayName = (contract: Contract): string => {
+  const displayName =
+    contract.supplier_display_name?.trim() || contract.supplier_name?.trim();
+  return displayName || "Pendiente";
 };
 
 const formatComparativeStatus = (status?: string | null) => {

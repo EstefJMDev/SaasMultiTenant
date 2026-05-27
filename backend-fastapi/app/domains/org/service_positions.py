@@ -75,6 +75,7 @@ def _to_read(p: Position) -> PositionRead:
         can_approve_comparative=p.can_approve_comparative,
         can_reject_comparative=getattr(p, "can_reject_comparative", False),
         can_view_all_comparatives=getattr(p, "can_view_all_comparatives", False),
+        full_approver=getattr(p, "full_approver", False),
         can_view_contract=getattr(p, "can_view_contract", False),
         can_edit_contract=getattr(p, "can_edit_contract", False),
         can_regenerate_contract=getattr(p, "can_regenerate_contract", False),
@@ -95,6 +96,7 @@ COMPARATIVE_CAPS = (
     "can_delete_comparative",
     "can_approve_comparative",
     "can_reject_comparative",
+    "full_approver",
 )
 
 

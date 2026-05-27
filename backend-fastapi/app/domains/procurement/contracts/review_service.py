@@ -22,6 +22,7 @@ approver_role con valores del enum ContractApproverRole.
 from __future__ import annotations
 
 import logging
+import unicodedata
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -52,6 +53,11 @@ from app.models.user import User
 from app.platform.notifications.service import create_notification
 
 logger = logging.getLogger("app.procurement.review_service")
+
+
+def _normalize_department_name(value: object) -> str:
+    normalized = unicodedata.normalize("NFKD", str(value or ""))
+    return "".join(ch for ch in normalized if not unicodedata.combining(ch)).strip().lower()
 
 
 # Slot order (display + iteration determinism)
@@ -171,13 +177,13 @@ def _user_in_admin_department(session: Session, user: User) -> bool:
     rows = session.exec(
         select(Department).where(Department.id.in_(dept_ids))
     ).all()
-    target_names = {"administracion", "administración", "admin"}
+    target_names = {"administracion", "admin"}
     for dept in rows:
         if not dept:
             continue
         if not getattr(dept, "can_approve_contract", False):
             continue
-        if (dept.name or "").strip().lower() in target_names:
+        if _normalize_department_name(dept.name) in target_names:
             return True
     return False
 
@@ -200,13 +206,13 @@ def _user_in_juridico_department(session: Session, user: User) -> bool:
     rows = session.exec(
         select(Department).where(Department.id.in_(dept_ids))
     ).all()
-    target_names = {"juridico", "jurídico", "legal"}
+    target_names = {"juridico", "legal"}
     for dept in rows:
         if not dept:
             continue
         if not getattr(dept, "can_edit_contract", False):
             continue
-        if (dept.name or "").strip().lower() in target_names:
+        if _normalize_department_name(dept.name) in target_names:
             return True
     return False
 
@@ -238,16 +244,16 @@ def _user_matches_role(
             select(Department).where(Department.id.in_(dept_ids))
         ).all()
         target_names = (
-            {"administracion", "administración", "admin"}
+            {"administracion", "admin"}
             if role == ContractApproverRole.ADMIN
-            else {"juridico", "jurídico", "legal"}
+            else {"juridico", "legal"}
         )
         for dept in rows:
             if not dept:
                 continue
             if not getattr(dept, "can_approve_contract", False):
                 continue
-            if (dept.name or "").strip().lower() in target_names:
+            if _normalize_department_name(dept.name) in target_names:
                 return True
         return False
 
@@ -331,7 +337,7 @@ def _notify_pending_review_users(session: Session, *, contract: Contract) -> Non
     juridico_department_ids = {
         dept.id
         for dept in session.exec(select(Department).where(Department.tenant_id == contract.tenant_id)).all()
-        if dept.id is not None and (dept.name or "").strip().lower() in {"juridico", "jurídico", "legal"}
+        if dept.id is not None and _normalize_department_name(dept.name) in {"juridico", "legal"}
     }
     if juridico_department_ids:
         juridico_rows = session.exec(
