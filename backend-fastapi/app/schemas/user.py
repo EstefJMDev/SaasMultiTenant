@@ -47,6 +47,7 @@ class UserRead(UserBase):
     can_approve_comparative: bool = False
     can_reject_comparative: bool = False
     can_view_all_comparatives: bool = False
+    full_approver: bool = False
     # Flags caps contrato (OR entre Department y Position).
     can_view_contract: bool = False
     can_edit_contract: bool = False

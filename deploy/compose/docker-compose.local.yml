@@ -11,3 +11,15 @@ services:
 
   celery-beat:
     user: "0:0"
+
+  adminer:
+    image: adminer:latest
+    restart: unless-stopped
+    environment:
+      ADMINER_DEFAULT_SERVER: db
+      ADMINER_DESIGN: pepa-linha-dark
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${ADMINER_HOST_PORT:-8081}:8080"

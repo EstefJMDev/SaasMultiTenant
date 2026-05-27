@@ -95,6 +95,7 @@ class ContractRead(BaseModel):
     assigned_admin_user_name: Optional[str] = None
 
     supplier_name: Optional[str]
+    supplier_display_name: Optional[str] = None
     supplier_tax_id: Optional[str]
     supplier_email: Optional[str]
     supplier_phone: Optional[str]

@@ -821,6 +821,8 @@ class ComparativosV2Service:
 
         if contexto.get("is_super_admin"):
             return {"OBRA", "GERENCIA"}
+        if contexto.get("full_approver"):
+            return {"OBRA", "GERENCIA"}
 
         roles: set[str] = set()
         position_role_code = str(contexto.get("position_role_code") or "").strip().upper()

@@ -127,6 +127,10 @@ def _has_comparative_cap(session: Session, user: User, cap: str) -> bool:
     return bool(getattr(pos, cap, False))
 
 
+def has_full_approver_permission(session: Session, user: User) -> bool:
+    return _has_comparative_cap(session, user, "full_approver")
+
+
 def can_create_comparative(session: Session, user: User) -> bool:
     return _has_comparative_cap(session, user, "can_create_comparative")
 

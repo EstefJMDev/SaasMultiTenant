@@ -41,6 +41,9 @@ class ComparativoCreate(BaseModel):
     numero_trabajadores_obra: Optional[int] = None
     retencion_garantias: Optional[Decimal] = None
     descripcion_garantias: Optional[str] = None
+    payload_ui_json: Optional[dict[str, Any]] = None
+    source_file_path: Optional[str] = None
+    source_filename: Optional[str] = None
 
 
 class ComparativoUpdate(BaseModel):
@@ -65,6 +68,9 @@ class ComparativoUpdate(BaseModel):
     numero_trabajadores_obra: Optional[int] = None
     retencion_garantias: Optional[Decimal] = None
     descripcion_garantias: Optional[str] = None
+    payload_ui_json: Optional[dict[str, Any]] = None
+    source_file_path: Optional[str] = None
+    source_filename: Optional[str] = None
     fecha_aprobacion: Optional[datetime] = None
     fecha_rechazo: Optional[datetime] = None
     motivo_rechazo: Optional[str] = None
@@ -98,6 +104,9 @@ class ComparativoRead(_ReadSchema):
     numero_trabajadores_obra: Optional[int] = None
     retencion_garantias: Optional[Decimal] = None
     descripcion_garantias: Optional[str] = None
+    payload_ui_json: Optional[dict[str, Any]] = None
+    source_file_path: Optional[str] = None
+    source_filename: Optional[str] = None
     fecha_aprobacion: Optional[datetime] = None
     fecha_rechazo: Optional[datetime] = None
     motivo_rechazo: Optional[str] = None
@@ -118,6 +127,9 @@ class ComparativoResumenRead(_ReadSchema):
     proveedor_id: Optional[int] = None
     cif: Optional[str] = None
     razon_social: Optional[str] = None
+    payload_ui_json: Optional[dict[str, Any]] = None
+    source_file_path: Optional[str] = None
+    source_filename: Optional[str] = None
     fecha_creacion: datetime
     fecha_actualizacion: datetime
     fecha_aprobacion: Optional[datetime] = None

@@ -36,7 +36,7 @@ export const DocumentsCenterSection: React.FC<DocumentsCenterSectionProps> = ({
         >
           {contracts.map((contract) => (
             <option key={contract.id} value={contract.id}>
-              {`CT-${contract.id} | ${formatContractType(contract.type)} | ${contract.supplier_name ?? "Sin proveedor"}`}
+              {`CT-${contract.id} | ${formatContractType(contract.type)} | ${contract.supplier_display_name ?? contract.supplier_name ?? "Sin proveedor"}`}
             </option>
           ))}
         </Select>

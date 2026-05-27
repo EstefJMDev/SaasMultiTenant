@@ -18,9 +18,6 @@ interface ContractPdfViewerProps {
   contractId?: number | null;
   tenantId?: number;
   docType?: "COMPARATIVE" | "CONTRACT" | "SIGNED";
-  templateId?: number | null;
-  documentVersion?: string | number | null;
-  isDocumentPending?: boolean;
   canRegenerate?: boolean;
   onRegenerate?: () => void | Promise<void>;
   isRegenerating?: boolean;
@@ -31,9 +28,6 @@ export const ContractPdfViewer: React.FC<ContractPdfViewerProps> = ({
   contractId,
   tenantId,
   docType = "CONTRACT",
-  templateId,
-  documentVersion,
-  isDocumentPending = false,
   canRegenerate = false,
   onRegenerate,
   isRegenerating = false,
@@ -48,17 +42,7 @@ export const ContractPdfViewer: React.FC<ContractPdfViewerProps> = ({
     docType,
     tenantId,
     enabled: Boolean(contractId),
-    templateId,
-    documentVersion,
-    pollOnPendingGeneration: docType === "CONTRACT",
   });
-  const pendingTemplateMessage = "Pendiente de seleccionar plantilla.";
-  const pendingDocumentMessage = "Plantilla asignada, documento pendiente de generar.";
-  const effectivePendingDocument =
-    docType === "CONTRACT" &&
-    templateId != null &&
-    !blobUrl &&
-    (isDocumentPending || error === pendingDocumentMessage);
 
   const handleRegenerate = async () => {
     if (!onRegenerate) return;
@@ -75,8 +59,6 @@ export const ContractPdfViewer: React.FC<ContractPdfViewerProps> = ({
     if (!canRegenerate) return;
     if (!contractId || !onRegenerate || docType !== "CONTRACT") return;
     if (errorStatus !== 404) return;
-    if (error === pendingTemplateMessage) return;
-    if (error === pendingDocumentMessage) return;
     if (autoRegeneratedRef.current === contractId) return;
     autoRegeneratedRef.current = contractId;
     (async () => {
@@ -88,7 +70,7 @@ export const ContractPdfViewer: React.FC<ContractPdfViewerProps> = ({
         // bucle si el backend responde con error.
       }
     })();
-  }, [canRegenerate, contractId, docType, onRegenerate, refresh, errorStatus, error]);
+  }, [canRegenerate, contractId, docType, onRegenerate, refresh, errorStatus]);
 
   useEffect(() => {
     if (!contractId) return;
@@ -127,7 +109,7 @@ export const ContractPdfViewer: React.FC<ContractPdfViewerProps> = ({
               leftIcon={<RefreshCw size={12} />}
               onClick={handleRegenerate}
               isLoading={isRegenerating}
-              isDisabled={!contractId || error === pendingTemplateMessage}
+              isDisabled={!contractId}
             >
               Regenerar
             </Button>
@@ -149,13 +131,6 @@ export const ContractPdfViewer: React.FC<ContractPdfViewerProps> = ({
         ) : isLoading ? (
           <Center h="100%">
             <Spinner />
-          </Center>
-        ) : effectivePendingDocument ? (
-          <Center h="100%" flexDirection="column" gap={3}>
-            <Spinner />
-            <Text fontSize="sm" color="gray.500" textAlign="center">
-              Plantilla asignada, generando documento...
-            </Text>
           </Center>
         ) : error ? (
           <Placeholder text={error} />

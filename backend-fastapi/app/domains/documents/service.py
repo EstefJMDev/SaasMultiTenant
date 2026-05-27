@@ -158,6 +158,19 @@ def _contract_field_map(contract: Contract) -> dict[str, str]:
         str(getattr(contract, "warranty_text", None) or "").strip()
         or retention_guarantee_default
     )
+    if not str(getattr(contract, "warranty_text", None) or "").strip():
+        if retention_value == "NO":
+            retention_guarantee_value = (
+                "El CONTRATISTA retendrá el 0% de cada factura que expida el SUBCONTRATISTA, "
+                "por tanto, la certificación y/o factura mensual debe llevar reflejada la "
+                "retención por garantía."
+            )
+        elif retention_value == "SI":
+            retention_guarantee_value = (
+                "El CONTRATISTA retendrá el 5% de cada factura que expida el SUBCONTRATISTA, "
+                "por tanto, la certificación y/o factura mensual debe llevar reflejada la "
+                "retención por garantía."
+            )
     guarantee_value = retention_guarantee_value
 
     project_name_value = (
