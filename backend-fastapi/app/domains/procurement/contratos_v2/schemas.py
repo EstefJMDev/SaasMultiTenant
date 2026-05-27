@@ -128,6 +128,7 @@ class ContratoV2DetalleRead(BaseModel):
     fecha_firma: Optional[datetime] = None
     fecha_rechazo: Optional[datetime] = None
     motivo_rechazo: Optional[str] = None
+    datos_contractuales_json: Optional[dict] = None
     datos_proveedor: Optional[ContratoDatosProveedorV2Read] = None
     hitos: list[ContratoHitoV2Read] = Field(default_factory=list)
     oferta_adjudicada: Optional[ContratoOfertaAdjudicadaV2Read] = None
@@ -141,7 +142,11 @@ class ContratoV2DetalleRead(BaseModel):
 
 
 class ContratoV2Update(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     numero_obra: Optional[str] = None
     nombre_obra: Optional[str] = None
     titulo: Optional[str] = None
     tipo_contrato: Optional[str] = None
+    datos_contractuales_json: Optional[dict] = None
+    replace_datos_contractuales_json: bool = False

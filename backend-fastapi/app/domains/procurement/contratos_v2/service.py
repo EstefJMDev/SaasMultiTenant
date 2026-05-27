@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import status
 from sqlmodel import Session
@@ -10,6 +10,7 @@ from app.platform.contracts_core.comparativos_enums import EstadoContrato
 from app.platform.contracts_core.comparativos_models import Contrato
 
 from . import repo
+from .context_builder_v2 import build_substitution_context_v2
 from .schemas import (
     ComparativoOrigenResumenRead,
     ContratoDatosProveedorV2Read,
@@ -21,6 +22,17 @@ from .schemas import (
     ContratoV2FlagsRead,
     ContratoV2Update,
 )
+
+
+def _deep_merge_dict(base: dict[str, Any], patch: dict[str, Any]) -> dict[str, Any]:
+    merged: dict[str, Any] = dict(base)
+    for key, value in patch.items():
+        base_value = merged.get(key)
+        if isinstance(base_value, dict) and isinstance(value, dict):
+            merged[key] = _deep_merge_dict(base_value, value)
+        else:
+            merged[key] = value
+    return merged
 
 
 class ContratosV2Service:
@@ -210,6 +222,11 @@ class ContratosV2Service:
             fecha_firma=contrato.fecha_firma,
             fecha_rechazo=contrato.fecha_rechazo,
             motivo_rechazo=contrato.motivo_rechazo,
+            datos_contractuales_json=(
+                dict(contrato.datos_contractuales_json)
+                if isinstance(contrato.datos_contractuales_json, dict)
+                else None
+            ),
             datos_proveedor=(
                 ContratoDatosProveedorV2Read.model_validate(datos_proveedor)
                 if datos_proveedor is not None
@@ -309,6 +326,19 @@ class ContratosV2Service:
             partidas_adjudicadas=partidas,
         )
 
+    def obtener_template_context_v2(
+        self,
+        *,
+        tenant_id: int,
+        contrato_id: int,
+    ) -> dict[str, Any]:
+        self._obtener_contrato_o_error(tenant_id=tenant_id, contrato_id=contrato_id)
+        return build_substitution_context_v2(
+            self.session,
+            tenant_id=tenant_id,
+            contrato_id=contrato_id,
+        )
+
     def actualizar_contrato(
         self,
         *,
@@ -318,6 +348,28 @@ class ContratosV2Service:
     ) -> ContratoV2DetalleRead:
         contrato = self._obtener_contrato_o_error(tenant_id=tenant_id, contrato_id=contrato_id)
         updates = payload.model_dump(exclude_unset=True)
+        json_in_payload = "datos_contractuales_json" in payload.model_fields_set
+        replace_json = bool(updates.pop("replace_datos_contractuales_json", False))
+        incoming_json = updates.pop("datos_contractuales_json", None)
+
+        if json_in_payload:
+            if incoming_json is not None and not isinstance(incoming_json, dict):
+                raise DomainError(
+                    "datos_contractuales_json debe ser un objeto JSON.",
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                )
+            current_json = (
+                dict(contrato.datos_contractuales_json)
+                if isinstance(contrato.datos_contractuales_json, dict)
+                else {}
+            )
+            next_json = (
+                dict(incoming_json or {})
+                if replace_json
+                else _deep_merge_dict(current_json, dict(incoming_json or {}))
+            )
+            updates["datos_contractuales_json"] = next_json
+
         if not updates:
             return self._armar_detalle(tenant_id=tenant_id, contrato=contrato)
 

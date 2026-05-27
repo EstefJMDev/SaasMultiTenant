@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, Header
 from sqlmodel import Session
@@ -118,5 +118,20 @@ def patch_contrato_v2_endpoint(
         tenant_id=tenant_id,
         contrato_id=contrato_id,
         payload=payload,
+    )
+
+
+@router.get("/{contrato_id}/template-context", response_model=dict[str, Any])
+def get_contrato_template_context_endpoint(
+    contrato_id: int,
+    x_tenant_id: Optional[int] = Header(default=None, alias="X-Tenant-Id"),
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_active_user),
+) -> dict[str, Any]:
+    tenant_id = tenant_for_write(current_user, x_tenant_id, session)
+    service = ContratosV2Service(session)
+    return service.obtener_template_context_v2(
+        tenant_id=tenant_id,
+        contrato_id=contrato_id,
     )
 

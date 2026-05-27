@@ -451,6 +451,10 @@ class Contrato(SQLModel, table=True):
     fecha_firma: Optional[datetime] = Field(default=None)
     fecha_rechazo: Optional[datetime] = Field(default=None)
     motivo_rechazo: Optional[str] = Field(default=None, sa_column=Column(Text))
+    datos_contractuales_json: Optional[dict] = Field(
+        default=None,
+        sa_column=Column(JSONB),
+    )
     eliminado_en: Optional[datetime] = Field(default=None, index=True)
 
     __table_args__ = (
