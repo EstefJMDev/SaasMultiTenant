@@ -96,6 +96,33 @@ def ensure_comparativos_schema(inspector, table_names) -> None:
     if not targets:
         return
 
+    with engine.begin() as conn:
+        if "comparativos" in table_names:
+            comparativos_columns = {
+                col["name"] for col in inspector.get_columns("comparativos")
+            }
+            if "payload_ui_json" not in comparativos_columns:
+                conn.execute(
+                    text(
+                        "ALTER TABLE comparativos "
+                        "ADD COLUMN payload_ui_json JSONB NULL"
+                    )
+                )
+            if "source_file_path" not in comparativos_columns:
+                conn.execute(
+                    text(
+                        "ALTER TABLE comparativos "
+                        "ADD COLUMN source_file_path TEXT NULL"
+                    )
+                )
+            if "source_filename" not in comparativos_columns:
+                conn.execute(
+                    text(
+                        "ALTER TABLE comparativos "
+                        "ADD COLUMN source_filename VARCHAR(255) NULL"
+                    )
+                )
+
     fk_state = {table: _has_tenant_fk(inspector, table) for table in targets}
     idx_state = {table: _has_tenant_index(inspector, table) for table in targets}
 

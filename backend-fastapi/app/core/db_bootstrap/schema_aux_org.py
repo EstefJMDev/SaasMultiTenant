@@ -43,6 +43,8 @@ def ensure_org_schema(inspector, table_names) -> None:
                 conn.execute(text("ALTER TABLE position ADD COLUMN can_view_provider BOOLEAN NOT NULL DEFAULT FALSE"))
             if "can_edit_provider" not in position_columns:
                 conn.execute(text("ALTER TABLE position ADD COLUMN can_edit_provider BOOLEAN NOT NULL DEFAULT FALSE"))
+            if "full_approver" not in position_columns:
+                conn.execute(text("ALTER TABLE position ADD COLUMN full_approver BOOLEAN NOT NULL DEFAULT FALSE"))
 
     if "work_site" in table_names:
         with engine.begin() as conn:

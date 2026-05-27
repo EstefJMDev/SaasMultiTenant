@@ -163,7 +163,7 @@ export const ContractsTableCard: React.FC<ContractsTableCardProps> = ({
                 </Td>
                 <Td py={4}>
                   <Text fontSize="sm" fontWeight="medium" noOfLines={2}>
-                    {contract.supplier_name || "-"}
+                    {contract.supplier_display_name || contract.supplier_name || "-"}
                   </Text>
                 </Td>
                 <Td py={4}>

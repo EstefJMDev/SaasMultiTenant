@@ -59,13 +59,6 @@ deploy/data/**
 !deploy/data/**/
 !deploy/data/**/.gitkeep
 
-db/backups/
-*.dump
-*.backup
-*.tar
-*.tar.gz
-*.zip
-
 *_log*.txt
 tmp-*.txt
 backend-fastapi/_tmp/
@@ -97,6 +90,7 @@ deploy/data/**
 *.zip
 *.sql.gz
 db/backups/
+backups/
 
 # Temp/logs
 _tmp/

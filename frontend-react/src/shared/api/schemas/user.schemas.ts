@@ -24,6 +24,7 @@ export const CurrentUserSchema = z.object({
   can_approve_comparative: z.boolean().optional(),
   can_reject_comparative: z.boolean().optional(),
   can_view_all_comparatives: z.boolean().optional(),
+  full_approver: z.boolean().optional(),
   can_view_contract: z.boolean().optional(),
   can_edit_contract: z.boolean().optional(),
   can_regenerate_contract: z.boolean().optional(),

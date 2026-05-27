@@ -120,6 +120,7 @@ def _user_to_read(
         can_approve_comparative=bool(pinfo.get("can_approve_comparative") or admin_bypass),
         can_reject_comparative=bool(pinfo.get("can_reject_comparative") or admin_bypass),
         can_view_all_comparatives=bool(pinfo.get("can_view_all_comparatives") or admin_bypass),
+        full_approver=bool(pinfo.get("full_approver") or admin_bypass),
         can_view_contract=bool(ccaps.get("can_view_contract") or admin_bypass),
         can_edit_contract=bool(ccaps.get("can_edit_contract") or admin_bypass),
         can_regenerate_contract=bool(ccaps.get("can_regenerate_contract") or admin_bypass),
@@ -223,6 +224,7 @@ def _resolve_position_info(session: Session, user: User) -> dict | None:
             "can_approve_comparative": _eff("can_approve_comparative"),
             "can_reject_comparative": _eff("can_reject_comparative"),
             "can_view_all_comparatives": _eff("can_view_all_comparatives"),
+            "full_approver": _eff("full_approver"),
         }
     except Exception:
         return None

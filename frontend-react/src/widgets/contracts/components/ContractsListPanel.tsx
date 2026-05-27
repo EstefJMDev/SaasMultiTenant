@@ -60,7 +60,7 @@ export const ContractsListPanel: React.FC<ContractsListPanelProps> = ({
                 <Td fontWeight="semibold">CT-{contract.id}</Td>
                 <Td>{formatContractType(contract.type)}</Td>
                 <Td>{formatContractStatus(contract.status)}</Td>
-                <Td>{contract.supplier_name ?? "Pendiente"}</Td>
+                <Td>{contract.supplier_display_name ?? contract.supplier_name ?? "Pendiente"}</Td>
                 <Td>{formatDate(contract.updated_at)}</Td>
                 <Td>
                   <HStack justify="flex-end" spacing={2}>

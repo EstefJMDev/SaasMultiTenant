@@ -868,7 +868,7 @@ def obtener_contexto_usuario_aprobador(
             position is not None
             and position.is_active
             and position.tenant_id == tenant_id
-            and position.can_approve_comparative
+            and (position.can_approve_comparative or getattr(position, "full_approver", False))
         ):
             can_approve = True
 
@@ -906,6 +906,7 @@ def obtener_contexto_usuario_aprobador(
         "usuario_encontrado": True,
         "is_super_admin": bool(user.is_super_admin),
         "can_approve_comparative": bool(can_approve),
+        "full_approver": bool(getattr(position, "full_approver", False)) if position else False,
         "position_role_code": (position.role_code if position else None),
         "departamentos": departamentos,
     }

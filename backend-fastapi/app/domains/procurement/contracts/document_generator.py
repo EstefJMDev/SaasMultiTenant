@@ -639,6 +639,19 @@ def _build_substitution_context(
     else:
         retencion_garantia_default = ""
     retencion_garantia = _str(contract.warranty_text) or retencion_garantia_default
+    if not _str(contract.warranty_text):
+        if retention_value == "NO":
+            retencion_garantia = (
+                "El CONTRATISTA retendrá el 0% de cada factura que expida el SUBCONTRATISTA, "
+                "por tanto, la certificación y/o factura mensual debe llevar reflejada la "
+                "retención por garantía."
+            )
+        elif retention_value == "SI":
+            retencion_garantia = (
+                "El CONTRATISTA retendrá el 5% de cada factura que expida el SUBCONTRATISTA, "
+                "por tanto, la certificación y/o factura mensual debe llevar reflejada la "
+                "retención por garantía."
+            )
     garantia = retencion_garantia
     # Token SERVICIOS: tipo de servicio acordado.
     tipo_servicio = _str(contract.service_category)

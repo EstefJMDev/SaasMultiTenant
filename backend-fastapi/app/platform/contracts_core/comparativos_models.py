@@ -122,6 +122,11 @@ class Comparativo(SQLModel, table=True):
     )
     descripcion_garantias: Optional[str] = Field(default=None, sa_column=Column(Text))
 
+    # Soporte del wizard/UI actual sin depender de contracts legacy.
+    payload_ui_json: Optional[dict] = Field(default=None, sa_column=Column(JSONB))
+    source_file_path: Optional[str] = Field(default=None, sa_column=Column(Text))
+    source_filename: Optional[str] = Field(default=None, max_length=255)
+
     # Flujo
     fecha_aprobacion: Optional[datetime] = Field(default=None)
     fecha_rechazo: Optional[datetime] = Field(default=None)
